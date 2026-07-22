@@ -206,7 +206,7 @@ export function CrudTable({ config }: { config: EntityConfig }) {
         </Button>
       </Stack>
       {listError && <Alert severity="error" sx={{ mb: 1.5 }}>{listError}</Alert>}
-      <Paper sx={{ height: 560 }}>
+      <Paper sx={{ height: 'calc(100vh - 170px)', minHeight: 420 }}>
         <DataGrid
           rows={rows ?? []}
           columns={columns}

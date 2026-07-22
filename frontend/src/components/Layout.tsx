@@ -387,7 +387,7 @@ export function Layout() {
           </Tooltip>
         </Box>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, maxWidth: 1250 }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, minWidth: 0 }}>
         <Outlet />
       </Box>
     </Box>

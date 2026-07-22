@@ -162,12 +162,28 @@ async def create_memo(body: MemoCreate, user: CurrentUser, session: SessionDep):
 
 
 @router.get("", response_model=list[MemoRead])
-async def list_memos(user: CurrentUser, session: SessionDep):
-    """Свои документы; администратор видит все (ТЗ §3.6)."""
+async def list_memos(
+    user: CurrentUser,
+    session: SessionDep,
+    organization_id: uuid.UUID | None = None,
+    project_id: uuid.UUID | None = None,
+    date_from: date_type | None = None,
+    date_to: date_type | None = None,
+):
+    """Свои документы; администратор видит все (ТЗ §3.6).
+    Отбор: организация, проект, период по дате документа."""
     is_admin = UserRole.ADMIN in user.roles
     stmt = select(Memo).order_by(Memo.created_at.desc())
     if not is_admin:
         stmt = stmt.where(Memo.author_id == user.id)
+    if organization_id is not None:
+        stmt = stmt.where(Memo.organization_id == organization_id)
+    if project_id is not None:
+        stmt = stmt.where(Memo.project_id == project_id)
+    if date_from is not None:
+        stmt = stmt.where(Memo.date >= date_from)
+    if date_to is not None:
+        stmt = stmt.where(Memo.date <= date_to)
     memos = list(await session.scalars(stmt))
 
     author_names: dict[uuid.UUID, str] = {}

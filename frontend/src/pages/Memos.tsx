@@ -23,6 +23,8 @@ import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
 import type { Memo, OrganizationRef, ProjectRef } from '../api/types'
 import { Attachments } from '../components/Attachments'
+import { EMPTY_PERIOD, PeriodPicker } from '../components/PeriodPicker'
+import type { Period } from '../components/PeriodPicker'
 import { ProcessStatusBadge } from '../components/StatusBadge'
 import { RoutePreview } from '../components/RoutePreview'
 import { useAuth } from '../auth'
@@ -46,15 +48,30 @@ export function MemosPage() {
   const [listError, setListError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // отбор списка: организация, проект, период по дате документа
+  const [filterOrg, setFilterOrg] = useState('')
+  const [filterProject, setFilterProject] = useState('')
+  const [period, setPeriod] = useState<Period>(EMPTY_PERIOD)
+
   const reload = useCallback(() => {
-    api<Memo[]>('/api/memos').then(setMemos)
-  }, [])
+    const params = new URLSearchParams()
+    if (filterOrg) params.set('organization_id', filterOrg)
+    if (filterProject) params.set('project_id', filterProject)
+    if (period.from) params.set('date_from', period.from)
+    if (period.to) params.set('date_to', period.to)
+    const query = params.toString()
+    api<Memo[]>(`/api/memos${query ? `?${query}` : ''}`).then(setMemos)
+  }, [filterOrg, filterProject, period])
+
+  useEffect(reload, [reload])
 
   useEffect(() => {
-    reload()
     api<OrganizationRef[]>('/api/refs/organizations').then(setOrganizations)
     api<ProjectRef[]>('/api/refs/projects').then(setProjects)
-  }, [reload])
+  }, [])
+
+  const hasFilters =
+    filterOrg !== '' || filterProject !== '' || period.from !== null || period.to !== null
 
   const save = async () => {
     if (!editing) return
@@ -154,10 +171,61 @@ export function MemosPage() {
       )}
       {listError && <Alert severity="error" sx={{ mb: 2 }}>{listError}</Alert>}
 
+      {/* панель отбора */}
+      <Paper sx={{ p: 1.5, mb: 2 }}>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <TextField
+            select
+            label="Организация"
+            value={filterOrg}
+            onChange={(e) => { setFilterOrg(e.target.value); setFilterProject('') }}
+            sx={{ width: 230, flexShrink: 0 }}
+          >
+            <MenuItem value="">Все</MenuItem>
+            {organizations.map((org) => (
+              <MenuItem key={org.id} value={org.id}>{org.name}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Проект"
+            value={filterProject}
+            onChange={(e) => setFilterProject(e.target.value)}
+            sx={{ width: 230, flexShrink: 0 }}
+          >
+            <MenuItem value="">Все</MenuItem>
+            {projects
+              .filter(
+                (p) =>
+                  !filterOrg ||
+                  p.organization_id === null ||
+                  p.organization_id === filterOrg,
+              )
+              .map((project) => (
+                <MenuItem key={project.id} value={project.id}>
+                  {project.code ? `${project.code} — ${project.name}` : project.name}
+                </MenuItem>
+              ))}
+          </TextField>
+          <PeriodPicker value={period} onChange={setPeriod} />
+          {hasFilters && (
+            <Button
+              onClick={() => {
+                setFilterOrg('')
+                setFilterProject('')
+                setPeriod(EMPTY_PERIOD)
+              }}
+            >
+              Сбросить
+            </Button>
+          )}
+        </Stack>
+      </Paper>
+
       <Paper>
         {memos.length === 0 ? (
           <Typography color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>
-            Записок пока нет
+            {hasFilters ? 'По заданному отбору ничего не найдено' : 'Записок пока нет'}
           </Typography>
         ) : (
           <Table size="small">

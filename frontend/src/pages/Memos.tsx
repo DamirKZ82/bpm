@@ -24,6 +24,7 @@ import { ApiError, api } from '../api/client'
 import type { Memo, OrganizationRef, ProjectRef } from '../api/types'
 import { Attachments } from '../components/Attachments'
 import { ProcessStatusBadge } from '../components/StatusBadge'
+import { RoutePreview } from '../components/RoutePreview'
 import { useAuth } from '../auth'
 
 function formatDate(value: string | null): string {
@@ -315,6 +316,19 @@ export function MemosPage() {
             onChange={(e) => setEditing({ ...editing, body: e.target.value })}
             disabled={readOnly}
           />
+          {!readOnly && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Маршрут согласования
+              </Typography>
+              <RoutePreview
+                objectType="MEMO"
+                organizationId={editing?.organization_id}
+                projectId={editing?.project_id}
+              />
+            </>
+          )}
           {editing?.id ? (
             <>
               <Divider sx={{ my: 2 }} />

@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Collapse from '@mui/material/Collapse'
 import Drawer from '@mui/material/Drawer'
+import Paper from '@mui/material/Paper'
+import Popper from '@mui/material/Popper'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -125,6 +127,23 @@ export function Layout() {
 
   const [open, setOpen] = useState<Record<string, boolean>>({ documents: true })
 
+  // выпадающее меню раздела при наведении в свёрнутом состоянии
+  const [hoverMenu, setHoverMenu] = useState<{
+    key: string
+    anchor: HTMLElement
+  } | null>(null)
+  const hoverTimer = useRef<number | null>(null)
+  const cancelClose = () => {
+    if (hoverTimer.current !== null) {
+      clearTimeout(hoverTimer.current)
+      hoverTimer.current = null
+    }
+  }
+  const scheduleClose = () => {
+    cancelClose()
+    hoverTimer.current = window.setTimeout(() => setHoverMenu(null), 200)
+  }
+
   useEffect(() => {
     const active = groups.find((g) =>
       g.children.some((leaf) => leafSelected(leaf, location.pathname)),
@@ -195,12 +214,21 @@ export function Layout() {
 
           {groups.map((group) => (
             <Box key={group.key}>
-              <Tooltip title={collapsed ? group.label : ''} placement="right">
                 <ListItemButton
+                  onMouseEnter={(e) => {
+                    if (collapsed) {
+                      cancelClose()
+                      setHoverMenu({ key: group.key, anchor: e.currentTarget })
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (collapsed) scheduleClose()
+                  }}
                   onClick={() => {
                     if (collapsed) {
                       // из свёрнутого меню: развернуть, раскрыть раздел
                       // и открыть его первый пункт
+                      setHoverMenu(null)
                       toggleCollapsed()
                       setOpen((prev) => ({ ...prev, [group.key]: true }))
                       navigate(group.children[0].to)
@@ -230,7 +258,6 @@ export function Layout() {
                     </>
                   )}
                 </ListItemButton>
-              </Tooltip>
               {!collapsed && (
                 <Collapse in={Boolean(open[group.key])} timeout="auto" unmountOnExit>
                   <List disablePadding>
@@ -256,6 +283,60 @@ export function Layout() {
             </Box>
           ))}
         </List>
+
+        {hoverMenu !== null &&
+          (() => {
+            const group = groups.find((g) => g.key === hoverMenu.key)
+            if (!group) return null
+            return (
+              <Popper
+                open
+                anchorEl={hoverMenu.anchor}
+                placement="right-start"
+                sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
+              >
+                <Paper
+                  elevation={4}
+                  variant="elevation"
+                  onMouseEnter={cancelClose}
+                  onMouseLeave={() => setHoverMenu(null)}
+                  sx={{ ml: 0.5, py: 0.5, minWidth: 230 }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ px: 2, py: 0.5, color: 'text.secondary' }}
+                  >
+                    {group.label}
+                  </Typography>
+                  <List dense disablePadding>
+                    {group.children.map((leaf) => (
+                      <ListItemButton
+                        key={leaf.to}
+                        component={NavLink}
+                        to={leaf.to}
+                        selected={leafSelected(leaf, location.pathname)}
+                        onClick={() => setHoverMenu(null)}
+                        sx={{
+                          color: NAV_LEAF_TEXT,
+                          '&.Mui-selected': {
+                            bgcolor: 'primary.light',
+                            color: 'primary.dark',
+                          },
+                        }}
+                      >
+                        <ListItemText
+                          primary={leaf.label}
+                          slotProps={{
+                            primary: { sx: { fontSize: 13.5, fontWeight: 500 } },
+                          }}
+                        />
+                      </ListItemButton>
+                    ))}
+                  </List>
+                </Paper>
+              </Popper>
+            )
+          })()}
 
         <Box
           sx={{

@@ -1,18 +1,67 @@
 """Абстракция хранилища файлов: локальный диск или S3-совместимое облако.
 
-Выбор — settings.storage_backend (local | s3). S3-вариант через boto3
-покрывает AWS, MinIO, Yandex Object Storage, VK Cloud и другие
-S3-совместимые сервисы (для не-AWS задаётся s3_endpoint_url).
+Конфигурация хранится в БД (app_settings, ключ "storage") и редактируется
+администратором на странице «Настройки BPM»; значения из .env служат
+значениями по умолчанию. S3-вариант через boto3 покрывает AWS, MinIO,
+Yandex Object Storage и другие S3-совместимые сервисы.
 """
-from functools import lru_cache
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
+
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import BASE_DIR, settings
+from app.models import AppSetting
+
+STORAGE_SETTINGS_KEY = "storage"
 
 
 class StorageError(Exception):
     pass
+
+
+class StorageConfig(BaseModel):
+    storage_backend: Literal["local", "s3"] = "local"
+    storage_local_path: str = "storage"
+    max_upload_mb: int = 50
+    s3_endpoint_url: str = ""
+    s3_bucket: str = "bpm"
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_region: str = "us-east-1"
+
+
+def _env_defaults() -> dict:
+    return {
+        "storage_backend": settings.storage_backend,
+        "storage_local_path": settings.storage_local_path,
+        "max_upload_mb": settings.max_upload_mb,
+        "s3_endpoint_url": settings.s3_endpoint_url,
+        "s3_bucket": settings.s3_bucket,
+        "s3_access_key": settings.s3_access_key,
+        "s3_secret_key": settings.s3_secret_key,
+        "s3_region": settings.s3_region,
+    }
+
+
+async def load_storage_config(session: AsyncSession) -> StorageConfig:
+    data = _env_defaults()
+    row = await session.get(AppSetting, STORAGE_SETTINGS_KEY)
+    if row is not None:
+        data.update({k: v for k, v in row.value.items() if v is not None})
+    return StorageConfig(**data)
+
+
+async def save_storage_config(
+    session: AsyncSession, config: StorageConfig
+) -> None:
+    row = await session.get(AppSetting, STORAGE_SETTINGS_KEY)
+    if row is None:
+        session.add(AppSetting(key=STORAGE_SETTINGS_KEY, value=config.model_dump()))
+    else:
+        row.value = config.model_dump()
+    await session.commit()
 
 
 class Storage(Protocol):
@@ -47,17 +96,17 @@ class LocalStorage:
 
 
 class S3Storage:
-    def __init__(self):
+    def __init__(self, config: StorageConfig):
         import boto3  # ленивый импорт: нужен только при storage_backend=s3
 
         self.client = boto3.client(
             "s3",
-            endpoint_url=settings.s3_endpoint_url or None,
-            aws_access_key_id=settings.s3_access_key or None,
-            aws_secret_access_key=settings.s3_secret_key or None,
-            region_name=settings.s3_region,
+            endpoint_url=config.s3_endpoint_url or None,
+            aws_access_key_id=config.s3_access_key or None,
+            aws_secret_access_key=config.s3_secret_key or None,
+            region_name=config.s3_region,
         )
-        self.bucket = settings.s3_bucket
+        self.bucket = config.s3_bucket
 
     def save(self, key: str, data: bytes) -> None:
         self.client.put_object(Bucket=self.bucket, Key=key, Body=data)
@@ -72,11 +121,25 @@ class S3Storage:
         self.client.delete_object(Bucket=self.bucket, Key=key)
 
 
-@lru_cache(maxsize=1)
-def get_storage() -> Storage:
-    if settings.storage_backend == "s3":
-        return S3Storage()
-    local = Path(settings.storage_local_path)
-    if not local.is_absolute():
-        local = BASE_DIR / local
-    return LocalStorage(local)
+# кэш по конфигурации: боto3-клиент не пересоздаётся на каждый запрос
+_cache: tuple[tuple, Storage] | None = None
+
+
+def build_storage(config: StorageConfig) -> Storage:
+    global _cache
+    cache_key = tuple(config.model_dump().values())
+    if _cache is not None and _cache[0] == cache_key:
+        return _cache[1]
+    if config.storage_backend == "s3":
+        storage: Storage = S3Storage(config)
+    else:
+        local = Path(config.storage_local_path)
+        if not local.is_absolute():
+            local = BASE_DIR / local
+        storage = LocalStorage(local)
+    _cache = (cache_key, storage)
+    return storage
+
+
+async def get_storage(session: AsyncSession) -> Storage:
+    return build_storage(await load_storage_config(session))

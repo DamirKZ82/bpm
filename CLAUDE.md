@@ -64,9 +64,14 @@ npm run dev                        # http://localhost:5173
   domain / integration), enum'ы в `enums.py`, PK — UUID
 - Настройки: `app/core/config.py` (pydantic-settings, `.env`, extra="ignore")
 - `.env` не коммитится; содержит DB_PASS, SMTP, Telegram-токен
-- Файлы-вложения: `app/services/storage.py` (local | s3 через STORAGE_BACKEND
-  в .env; s3 = любое S3-совместимое через boto3). Локальные файлы —
-  в backend/storage/ (в .gitignore). В 1С передаются только ссылки (ТЗ §8.7)
+- Файлы-вложения: `app/services/storage.py` (local | s3, любое S3-совместимое
+  через boto3). Конфигурация — в БД (app_settings, ключ storage), правится
+  админом на странице «Настройки BPM»; .env — только значения по умолчанию.
+  Локальные файлы — в backend/storage/ (в .gitignore). В 1С передаются
+  только ссылки (ТЗ §8.7)
+- Обязательные реквизиты документа: номер (автонумерация через
+  memo_number_seq, формат СЗ-NNNNNN), дата, организация, проект.
+  Организация/проект обязательны на уровне API, в БД nullable
 
 ## Порядок внедрения (ТЗ §12)
 

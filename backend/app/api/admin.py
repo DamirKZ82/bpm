@@ -332,15 +332,57 @@ router.include_router(users_router)
 
 @router.get("/settings-info", dependencies=[Depends(require_roles())])
 async def settings_info():
-    """Текущая конфигурация для страницы «Настройки BPM» (только чтение;
-    изменение — через backend/.env)."""
+    """Информация о конфигурации для страницы «Настройки BPM»."""
     from app.core.config import settings
 
-    return {
-        "auth_mode": settings.auth_mode,
-        "storage_backend": settings.storage_backend,
-        "storage_local_path": settings.storage_local_path,
-        "s3_endpoint_url": settings.s3_endpoint_url or None,
-        "s3_bucket": settings.s3_bucket,
-        "max_upload_mb": settings.max_upload_mb,
-    }
+    return {"auth_mode": settings.auth_mode}
+
+
+# --- Настройки хранилища файлов: хранятся в БД, правятся из UI ---
+
+class StorageSettingsUpdate(BaseModel):
+    storage_backend: str  # local | s3
+    storage_local_path: str = "storage"
+    max_upload_mb: int = 50
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_access_key: str = ""
+    # None = оставить прежний секрет (в GET секрет не возвращается)
+    s3_secret_key: str | None = None
+    s3_region: str = "us-east-1"
+
+
+def _storage_settings_response(config) -> dict:
+    data = config.model_dump()
+    data["s3_secret_set"] = bool(data.pop("s3_secret_key"))
+    return data
+
+
+@router.get("/settings/storage", dependencies=[Depends(require_roles())])
+async def get_storage_settings(session: SessionDep):
+    from app.services.storage import load_storage_config
+
+    return _storage_settings_response(await load_storage_config(session))
+
+
+@router.put("/settings/storage", dependencies=[Depends(require_roles())])
+async def update_storage_settings(
+    payload: StorageSettingsUpdate, session: SessionDep
+):
+    from app.services.storage import (
+        StorageConfig,
+        load_storage_config,
+        save_storage_config,
+    )
+
+    if payload.storage_backend not in ("local", "s3"):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Способ хранения: local или s3"
+        )
+    current = await load_storage_config(session)
+    data = payload.model_dump()
+    if data["s3_secret_key"] is None:
+        data["s3_secret_key"] = current.s3_secret_key
+    config = StorageConfig(**data)
+    await save_storage_config(session, config)
+    return _storage_settings_response(config)

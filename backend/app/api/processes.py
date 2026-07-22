@@ -4,7 +4,16 @@ from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
-from app.models import AuditLog, Employee, Memo, ProcessInstance, Task, User
+from app.models import (
+    AuditLog,
+    Employee,
+    Memo,
+    Organization,
+    ProcessInstance,
+    Project,
+    Task,
+    User,
+)
 from app.models.enums import ObjectType, UserRole
 from app.schemas.process import (
     AuditRead,
@@ -58,9 +67,20 @@ async def get_process(process_id: uuid.UUID, user: CurrentUser, session: Session
     if initiator:
         result.initiator_name = initiator.display_name or initiator.ad_sam_account_name
 
+    result.organization_name = await session.scalar(
+        select(Organization.name).where(Organization.id == process.organization_id)
+    )
+    if process.project_id:
+        result.project_name = await session.scalar(
+            select(Project.name).where(Project.id == process.project_id)
+        )
+
     if process.object_type == ObjectType.MEMO:
         memo = await session.get(Memo, process.object_id)
-        result.subject = memo.subject if memo else None
+        if memo:
+            result.subject = memo.subject
+            result.doc_number = memo.number
+            result.doc_date = memo.date
 
     tasks = list(
         await session.scalars(

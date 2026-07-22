@@ -1,5 +1,7 @@
 import uuid
-from datetime import date, datetime
+# алиас Date: поле "date" в моделях затеняет тип в аннотациях
+from datetime import date as Date
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -8,20 +10,24 @@ from app.models.enums import ObjectType, ProcessStatus, TaskResult, TaskStatus
 
 
 class MemoCreate(BaseModel):
+    """Номер присваивается автоматически; дата, организация и проект —
+    обязательные реквизиты любого документа."""
+
     subject: str
     body: str
+    date: Date | None = None  # None = сегодня
+    organization_id: uuid.UUID
+    project_id: uuid.UUID
     department_id: uuid.UUID | None = None
 
 
 class MemoUpdate(BaseModel):
     subject: str | None = None
     body: str | None = None
-    department_id: uuid.UUID | None = None
-
-
-class MemoSubmit(BaseModel):
-    organization_id: uuid.UUID | None = None  # None = из основного трудоустройства
+    date: Date | None = None
+    organization_id: uuid.UUID | None = None
     project_id: uuid.UUID | None = None
+    department_id: uuid.UUID | None = None
 
 
 class ProcessBrief(BaseModel):
@@ -37,6 +43,12 @@ class MemoRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    number: str
+    date: Date
+    organization_id: uuid.UUID | None
+    organization_name: str | None = None
+    project_id: uuid.UUID | None
+    project_name: str | None = None
     subject: str
     body: str
     department_id: uuid.UUID | None
@@ -107,12 +119,16 @@ class ProcessRead(BaseModel):
     initiator_id: uuid.UUID
     initiator_name: str | None = None
     organization_id: uuid.UUID
+    organization_name: str | None = None
     project_id: uuid.UUID | None
+    project_name: str | None = None
     status: ProcessStatus
     route_snapshot: dict[str, Any] | None
     started_at: datetime | None
     completed_at: datetime | None
     subject: str | None = None
+    doc_number: str | None = None
+    doc_date: Date | None = None
     tasks: list[TaskRead] = []
     audit: list[AuditRead] = []
 

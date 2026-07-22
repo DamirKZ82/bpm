@@ -8,7 +8,9 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
+import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -18,23 +20,26 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import Divider from '@mui/material/Divider'
 import { ApiError, api } from '../api/client'
-import type { Memo } from '../api/types'
+import type { Memo, OrganizationRef, ProjectRef } from '../api/types'
 import { Attachments } from '../components/Attachments'
 import { ProcessStatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth'
 
-function formatDate(value: string): string {
-  return new Date(value + 'Z').toLocaleString('ru-RU', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
+function formatDate(value: string | null): string {
+  if (!value) return '—'
+  return new Date(value).toLocaleDateString('ru-RU')
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
 export function MemosPage() {
   const { user } = useAuth()
   const [memos, setMemos] = useState<Memo[] | null>(null)
+  const [organizations, setOrganizations] = useState<OrganizationRef[]>([])
+  const [projects, setProjects] = useState<ProjectRef[]>([])
   const [editing, setEditing] = useState<Partial<Memo> | null>(null)
   const [error, setError] = useState('')
   const [listError, setListError] = useState('')
@@ -44,14 +49,24 @@ export function MemosPage() {
     api<Memo[]>('/api/memos').then(setMemos)
   }, [])
 
-  useEffect(reload, [reload])
+  useEffect(() => {
+    reload()
+    api<OrganizationRef[]>('/api/refs/organizations').then(setOrganizations)
+    api<ProjectRef[]>('/api/refs/projects').then(setProjects)
+  }, [reload])
 
   const save = async () => {
     if (!editing) return
     setBusy(true)
     setError('')
     try {
-      const body = { subject: editing.subject ?? '', body: editing.body ?? '' }
+      const body = {
+        subject: editing.subject ?? '',
+        body: editing.body ?? '',
+        date: editing.date ?? today(),
+        organization_id: editing.organization_id,
+        project_id: editing.project_id,
+      }
       if (editing.id) {
         await api(`/api/memos/${editing.id}`, { method: 'PATCH', body })
         setEditing(null)
@@ -98,6 +113,14 @@ export function MemosPage() {
     !memo.process ||
     ['REJECTED', 'CANCELLED', 'FORCE_CLOSED'].includes(memo.process.status)
 
+  const readOnly = Boolean(editing?.id) && editing?.author_id !== user?.id
+  const projectOptions = projects.filter(
+    (p) =>
+      !editing?.organization_id ||
+      p.organization_id === null ||
+      p.organization_id === editing.organization_id,
+  )
+
   return (
     <>
       <Stack
@@ -111,7 +134,13 @@ export function MemosPage() {
           variant="contained"
           startIcon={<AddIcon />}
           disabled={!canCreate}
-          onClick={() => { setEditing({}); setError('') }}
+          onClick={() => {
+            setEditing({
+              date: today(),
+              organization_id: organizations.length === 1 ? organizations[0].id : null,
+            })
+            setError('')
+          }}
         >
           Новая записка
         </Button>
@@ -133,9 +162,11 @@ export function MemosPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
+                <TableCell>Номер</TableCell>
                 <TableCell>Тема</TableCell>
                 {isAdmin && <TableCell>Автор</TableCell>}
-                <TableCell>Создана</TableCell>
+                <TableCell>Дата</TableCell>
+                <TableCell>Проект</TableCell>
                 <TableCell>Статус</TableCell>
                 <TableCell align="right" width={310} />
               </TableRow>
@@ -143,6 +174,7 @@ export function MemosPage() {
             <TableBody>
               {memos.map((memo) => (
                 <TableRow key={memo.id} hover>
+                  <TableCell>{memo.number}</TableCell>
                   <TableCell>
                     {memo.process ? (
                       <Link component={RouterLink} to={`/process/${memo.process.id}`}>
@@ -162,7 +194,8 @@ export function MemosPage() {
                   {isAdmin && (
                     <TableCell>{memo.author_name ?? '—'}</TableCell>
                   )}
-                  <TableCell>{formatDate(memo.created_at)}</TableCell>
+                  <TableCell>{formatDate(memo.date)}</TableCell>
+                  <TableCell>{memo.project_name ?? '—'}</TableCell>
                   <TableCell>
                     {memo.process ? (
                       <ProcessStatusBadge status={memo.process.status} />
@@ -208,53 +241,104 @@ export function MemosPage() {
         <DialogTitle>
           {!editing?.id
             ? 'Новая служебная записка'
-            : editing.author_id === user?.id || !editing.author_id
-              ? 'Служебная записка'
-              : `Служебная записка — ${editing.author_name ?? 'другой автор'}`}
+            : readOnly
+              ? `${editing.number} — ${editing.author_name ?? 'другой автор'}`
+              : `Служебная записка ${editing.number}`}
         </DialogTitle>
         <DialogContent>
-          {(() => {
-            const readOnly = Boolean(editing?.id) && editing?.author_id !== user?.id
-            return (
-              <>
-                <TextField
-                  label="Тема"
-                  value={editing?.subject ?? ''}
-                  onChange={(e) => setEditing({ ...editing, subject: e.target.value })}
-                  autoFocus={!readOnly}
-                  disabled={readOnly}
-                  sx={{ mt: 1, mb: 2 }}
-                />
-                <TextField
-                  label="Содержание"
-                  multiline
-                  minRows={5}
-                  value={editing?.body ?? ''}
-                  onChange={(e) => setEditing({ ...editing, body: e.target.value })}
-                  disabled={readOnly}
-                />
-                {editing?.id ? (
-                  <>
-                    <Divider sx={{ my: 2 }} />
-                    <Attachments memoId={editing.id} canEdit={!readOnly} />
-                  </>
-                ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                    Вложения можно добавить после сохранения
-                  </Typography>
-                )}
-                {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-              </>
-            )
-          })()}
+          <Stack direction="row" spacing={2} sx={{ mt: 1, mb: 2 }}>
+            <TextField
+              label="Номер"
+              value={editing?.number ?? ''}
+              placeholder="автоматически"
+              disabled
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <TextField
+              label="Дата"
+              type="date"
+              value={editing?.date ?? today()}
+              onChange={(e) => setEditing({ ...editing, date: e.target.value })}
+              disabled={readOnly}
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          </Stack>
+          <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+            <TextField
+              select
+              label="Организация"
+              required
+              value={editing?.organization_id ?? ''}
+              onChange={(e) =>
+                setEditing({
+                  ...editing,
+                  organization_id: e.target.value || null,
+                  project_id: null,
+                })
+              }
+              disabled={readOnly}
+            >
+              {organizations.map((org) => (
+                <MenuItem key={org.id} value={org.id}>{org.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Проект"
+              required
+              value={editing?.project_id ?? ''}
+              onChange={(e) =>
+                setEditing({ ...editing, project_id: e.target.value || null })
+              }
+              disabled={readOnly}
+            >
+              {projectOptions.map((project) => (
+                <MenuItem key={project.id} value={project.id}>
+                  {project.code ? `${project.code} — ${project.name}` : project.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+          <TextField
+            label="Тема"
+            value={editing?.subject ?? ''}
+            onChange={(e) => setEditing({ ...editing, subject: e.target.value })}
+            disabled={readOnly}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Содержание"
+            multiline
+            minRows={5}
+            value={editing?.body ?? ''}
+            onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+            disabled={readOnly}
+          />
+          {editing?.id ? (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Attachments memoId={editing.id} canEdit={!readOnly} />
+            </>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              Вложения можно добавить после сохранения
+            </Typography>
+          )}
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditing(null)}>Закрыть</Button>
-          {(!editing?.id || editing?.author_id === user?.id) && (
+          {!readOnly && (
             <Button
               variant="contained"
               onClick={save}
-              disabled={busy || !(editing?.subject ?? '').trim() || !(editing?.body ?? '').trim()}
+              disabled={
+                busy ||
+                !(editing?.subject ?? '').trim() ||
+                !(editing?.body ?? '').trim() ||
+                !editing?.organization_id ||
+                !editing?.project_id
+              }
             >
               Сохранить
             </Button>

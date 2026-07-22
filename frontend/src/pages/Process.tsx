@@ -127,8 +127,26 @@ export function ProcessPage() {
       <Paper sx={{ p: 2.5, mb: 2 }}>
         <Table size="small" sx={{ '& td': { border: 0, py: 0.5 } }}>
           <TableBody>
+            {process.doc_number && (
+              <TableRow>
+                <TableCell sx={{ color: 'text.secondary', width: 160 }}>Документ</TableCell>
+                <TableCell>
+                  {process.doc_number}
+                  {process.doc_date &&
+                    ` от ${new Date(process.doc_date).toLocaleDateString('ru-RU')}`}
+                </TableCell>
+              </TableRow>
+            )}
             <TableRow>
-              <TableCell sx={{ color: 'text.secondary', width: 160 }}>Инициатор</TableCell>
+              <TableCell sx={{ color: 'text.secondary', width: 160 }}>Организация</TableCell>
+              <TableCell>{process.organization_name ?? '—'}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ color: 'text.secondary' }}>Проект</TableCell>
+              <TableCell>{process.project_name ?? '—'}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ color: 'text.secondary' }}>Инициатор</TableCell>
               <TableCell>{process.initiator_name ?? '—'}</TableCell>
             </TableRow>
             <TableRow>

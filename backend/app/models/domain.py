@@ -61,10 +61,21 @@ class Contract(UUIDPKMixin, Base):
 
 
 class Memo(UUIDPKMixin, Base):
-    """Служебная записка — первый вид объекта (этап 3 внедрения)."""
+    """Служебная записка — первый вид объекта (этап 3 внедрения).
+
+    Обязательные реквизиты любого документа: номер (автонумерация),
+    дата, организация, проект. Организация/проект в БД nullable
+    (исторические данные), обязательность обеспечивает API.
+    """
 
     __tablename__ = "memos"
 
+    number: Mapped[str] = mapped_column(String(50), unique=True)
+    date: Mapped[date]
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id")
+    )
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id"))
     subject: Mapped[str] = mapped_column(String(500))
     body: Mapped[str] = mapped_column(Text)
     department_id: Mapped[uuid.UUID | None] = mapped_column(

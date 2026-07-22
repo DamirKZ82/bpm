@@ -24,6 +24,12 @@ export interface ProcessBrief {
 
 export interface Memo {
   id: string
+  number: string
+  date: string
+  organization_id: string | null
+  organization_name: string | null
+  project_id: string | null
+  project_name: string | null
   subject: string
   body: string
   department_id: string | null
@@ -31,6 +37,18 @@ export interface Memo {
   author_name: string | null
   created_at: string
   process: ProcessBrief | null
+}
+
+export interface OrganizationRef {
+  id: string
+  name: string
+}
+
+export interface ProjectRef {
+  id: string
+  name: string
+  code: string | null
+  organization_id: string | null
 }
 
 export interface Attachment {
@@ -105,7 +123,11 @@ export interface Process {
   initiator_id: string
   initiator_name: string | null
   organization_id: string
+  organization_name: string | null
   project_id: string | null
+  project_name: string | null
+  doc_number: string | null
+  doc_date: string | null
   status: ProcessStatus
   route_snapshot: { stages: RouteStageSnapshot[] } | null
   started_at: string | null

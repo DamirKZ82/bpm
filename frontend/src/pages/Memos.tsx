@@ -237,7 +237,7 @@ export function MemosPage() {
         )}
       </Paper>
 
-      <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
+      <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="md">
         <DialogTitle>
           {!editing?.id
             ? 'Новая служебная записка'
@@ -246,12 +246,14 @@ export function MemosPage() {
               : `Служебная записка ${editing.number}`}
         </DialogTitle>
         <DialogContent>
+          {/* реквизиты шапки — в один ряд */}
           <Stack direction="row" spacing={2} sx={{ mt: 1, mb: 2 }}>
             <TextField
               label="Номер"
               value={editing?.number ?? ''}
               placeholder="автоматически"
               disabled
+              sx={{ width: 170, flexShrink: 0 }}
               slotProps={{ inputLabel: { shrink: true } }}
             />
             <TextField
@@ -260,10 +262,9 @@ export function MemosPage() {
               value={editing?.date ?? today()}
               onChange={(e) => setEditing({ ...editing, date: e.target.value })}
               disabled={readOnly}
+              sx={{ width: 180, flexShrink: 0 }}
               slotProps={{ inputLabel: { shrink: true } }}
             />
-          </Stack>
-          <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
             <TextField
               select
               label="Организация"

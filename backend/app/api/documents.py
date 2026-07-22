@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, status
-from sqlalchemy import select, text
+from sqlalchemy import Numeric, cast, select, text
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
@@ -256,10 +256,68 @@ async def create_document(body: DocumentCreate, user: CurrentUser, session: Sess
     return await _document_read(session, document, None)
 
 
+async def _apply_custom_filters(session, stmt, type_code: str, request: Request):
+    """Отбор по настраиваемым полям: cf_<code>=значение,
+    cf_<code>_from / cf_<code>_to — диапазоны для дат и чисел."""
+    doc_type = await session.scalar(
+        select(DocumentType).where(DocumentType.code == type_code)
+    )
+    if doc_type is None:
+        return stmt
+    fields = {
+        f.code: f
+        for f in await session.scalars(
+            select(DocumentTypeField).where(
+                DocumentTypeField.document_type_id == doc_type.id
+            )
+        )
+    }
+    for key, raw in request.query_params.items():
+        if not key.startswith("cf_") or raw == "":
+            continue
+        code, op = key[3:], "eq"
+        if code.endswith("_from"):
+            code, op = code[:-5], "ge"
+        elif code.endswith("_to"):
+            code, op = code[:-3], "le"
+        field = fields.get(code)
+        if field is None:
+            continue
+        column = Document.custom_fields[code].astext
+        if field.field_type in (FieldType.STRING, FieldType.TEXT):
+            stmt = stmt.where(column.ilike(f"%{raw}%"))
+        elif field.field_type == FieldType.BOOLEAN:
+            stmt = stmt.where(column == ("true" if raw in ("true", "1") else "false"))
+        elif field.field_type == FieldType.REF:
+            stmt = stmt.where(column == raw)
+        elif field.field_type == FieldType.DATE:
+            # ISO-даты сравниваются лексикографически корректно
+            if op == "ge":
+                stmt = stmt.where(column >= raw)
+            elif op == "le":
+                stmt = stmt.where(column <= raw)
+            else:
+                stmt = stmt.where(column == raw)
+        elif field.field_type in (FieldType.NUMBER, FieldType.MONEY):
+            try:
+                number = float(raw)
+            except ValueError:
+                continue
+            numeric = cast(column, Numeric)
+            if op == "ge":
+                stmt = stmt.where(numeric >= number)
+            elif op == "le":
+                stmt = stmt.where(numeric <= number)
+            else:
+                stmt = stmt.where(numeric == number)
+    return stmt
+
+
 @router.get("", response_model=list[DocumentRead])
 async def list_documents(
     user: CurrentUser,
     session: SessionDep,
+    request: Request,
     type_code: str | None = None,
     organization_id: uuid.UUID | None = None,
     project_id: uuid.UUID | None = None,
@@ -267,13 +325,14 @@ async def list_documents(
     date_to: date_type | None = None,
 ):
     """Свои документы; администратор видит все (ТЗ §3.6).
-    Отбор: вид, организация, проект, период по дате документа."""
+    Отбор: вид, организация, проект, период, настраиваемые поля (cf_*)."""
     is_admin = UserRole.ADMIN in user.roles
     stmt = select(Document).order_by(Document.created_at.desc())
     if not is_admin:
         stmt = stmt.where(Document.author_id == user.id)
     if type_code is not None:
         stmt = stmt.where(Document.type_code == type_code)
+        stmt = await _apply_custom_filters(session, stmt, type_code, request)
     if organization_id is not None:
         stmt = stmt.where(Document.organization_id == organization_id)
     if project_id is not None:

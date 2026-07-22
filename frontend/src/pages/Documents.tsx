@@ -22,8 +22,9 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
 import type { DocumentItem, DocumentTypeRef } from '../api/types'
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
 import { Attachments } from '../components/Attachments'
-import { CustomFieldInputs, useRefsData } from '../components/CustomFields'
+import { CustomFieldInputs, refOptions, useRefsData } from '../components/CustomFields'
 import { EMPTY_PERIOD, PeriodPicker } from '../components/PeriodPicker'
 import type { Period } from '../components/PeriodPicker'
 import { ProcessStatusBadge } from '../components/StatusBadge'
@@ -54,6 +55,8 @@ export function DocumentsPage() {
   const [filterOrg, setFilterOrg] = useState('')
   const [filterProject, setFilterProject] = useState('')
   const [period, setPeriod] = useState<Period>(EMPTY_PERIOD)
+  // отбор по настраиваемым полям вида: код поля (или код_from/_to) -> значение
+  const [cfFilters, setCfFilters] = useState<Record<string, string>>({})
 
   const docType = useMemo(
     () => docTypes.find((t) => t.code === typeCode) ?? null,
@@ -66,8 +69,11 @@ export function DocumentsPage() {
     if (filterProject) params.set('project_id', filterProject)
     if (period.from) params.set('date_from', period.from)
     if (period.to) params.set('date_to', period.to)
+    for (const [key, value] of Object.entries(cfFilters)) {
+      if (value !== '') params.set(`cf_${key}`, value)
+    }
     api<DocumentItem[]>(`/api/documents?${params}`).then(setDocuments)
-  }, [typeCode, filterOrg, filterProject, period])
+  }, [typeCode, filterOrg, filterProject, period, cfFilters])
 
   useEffect(() => {
     setDocuments(null)
@@ -78,8 +84,16 @@ export function DocumentsPage() {
     api<DocumentTypeRef[]>('/api/refs/document-types').then(setDocTypes)
   }, [])
 
+  useEffect(() => setCfFilters({}), [typeCode])
+
   const hasFilters =
-    filterOrg !== '' || filterProject !== '' || period.from !== null || period.to !== null
+    filterOrg !== '' ||
+    filterProject !== '' ||
+    period.from !== null ||
+    period.to !== null ||
+    Object.values(cfFilters).some((v) => v !== '')
+  const setCf = (key: string, value: string) =>
+    setCfFilters((prev) => ({ ...prev, [key]: value }))
 
   const save = async () => {
     if (!editing) return
@@ -228,12 +242,104 @@ export function DocumentsPage() {
               ))}
           </TextField>
           <PeriodPicker value={period} onChange={setPeriod} />
+          {/* отборы по настраиваемым полям вида */}
+          {(docType?.fields ?? [])
+            .filter((f) => f.field_type !== 'TEXT')
+            .map((field) => {
+              switch (field.field_type) {
+                case 'BOOLEAN':
+                  return (
+                    <TextField
+                      key={field.id}
+                      select
+                      label={field.name}
+                      value={cfFilters[field.code] ?? ''}
+                      onChange={(e) => setCf(field.code, e.target.value)}
+                      sx={{ width: 150, flexShrink: 0 }}
+                    >
+                      <MenuItem value="">Все</MenuItem>
+                      <MenuItem value="true">Да</MenuItem>
+                      <MenuItem value="false">Нет</MenuItem>
+                    </TextField>
+                  )
+                case 'REF':
+                  return (
+                    <TextField
+                      key={field.id}
+                      select
+                      label={field.name}
+                      value={cfFilters[field.code] ?? ''}
+                      onChange={(e) => setCf(field.code, e.target.value)}
+                      sx={{ width: 210, flexShrink: 0 }}
+                    >
+                      <MenuItem value="">Все</MenuItem>
+                      {refOptions(field, refs).map((option) => (
+                        <MenuItem key={option.id} value={option.id}>
+                          {option.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )
+                case 'DATE':
+                  return (
+                    <Stack direction="row" spacing={1} key={field.id} sx={{ flexShrink: 0 }}>
+                      <TextField
+                        type="date"
+                        label={`${field.name} с`}
+                        value={cfFilters[`${field.code}_from`] ?? ''}
+                        onChange={(e) => setCf(`${field.code}_from`, e.target.value)}
+                        sx={{ width: 165 }}
+                        slotProps={{ inputLabel: { shrink: true } }}
+                      />
+                      <TextField
+                        type="date"
+                        label="по"
+                        value={cfFilters[`${field.code}_to`] ?? ''}
+                        onChange={(e) => setCf(`${field.code}_to`, e.target.value)}
+                        sx={{ width: 165 }}
+                        slotProps={{ inputLabel: { shrink: true } }}
+                      />
+                    </Stack>
+                  )
+                case 'NUMBER':
+                case 'MONEY':
+                  return (
+                    <Stack direction="row" spacing={1} key={field.id} sx={{ flexShrink: 0 }}>
+                      <TextField
+                        type="number"
+                        label={`${field.name} от`}
+                        value={cfFilters[`${field.code}_from`] ?? ''}
+                        onChange={(e) => setCf(`${field.code}_from`, e.target.value)}
+                        sx={{ width: 140 }}
+                      />
+                      <TextField
+                        type="number"
+                        label="до"
+                        value={cfFilters[`${field.code}_to`] ?? ''}
+                        onChange={(e) => setCf(`${field.code}_to`, e.target.value)}
+                        sx={{ width: 120 }}
+                      />
+                    </Stack>
+                  )
+                default:
+                  return (
+                    <TextField
+                      key={field.id}
+                      label={field.name}
+                      value={cfFilters[field.code] ?? ''}
+                      onChange={(e) => setCf(field.code, e.target.value)}
+                      sx={{ width: 200, flexShrink: 0 }}
+                    />
+                  )
+              }
+            })}
           {hasFilters && (
             <Button
               onClick={() => {
                 setFilterOrg('')
                 setFilterProject('')
                 setPeriod(EMPTY_PERIOD)
+                setCfFilters({})
               }}
             >
               Сбросить
@@ -442,6 +548,15 @@ export function DocumentsPage() {
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </DialogContent>
         <DialogActions>
+          {editing?.id && (
+            <Button
+              startIcon={<PrintOutlinedIcon />}
+              onClick={() => window.open(`/print/${editing.id}`, '_blank')}
+              sx={{ mr: 'auto' }}
+            >
+              Печать
+            </Button>
+          )}
           <Button onClick={() => setEditing(null)}>Закрыть</Button>
           {!readOnly && (
             <Button

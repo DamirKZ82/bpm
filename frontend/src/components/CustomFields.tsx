@@ -46,7 +46,10 @@ export function useRefsData(enabled: boolean): RefsData {
   return data
 }
 
-function refOptions(field: TypeField, refs: RefsData): { id: string; name: string }[] {
+export function refOptions(
+  field: TypeField,
+  refs: RefsData,
+): { id: string; name: string }[] {
   switch (field.ref_target) {
     case 'EMPLOYEE':
       return refs.employees.map((e) => ({ id: e.id, name: e.full_name }))

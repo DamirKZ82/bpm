@@ -4,6 +4,7 @@ import { Layout } from './components/Layout'
 import { AdminPage } from './pages/Admin'
 import { DocumentsPage } from './pages/Documents'
 import { LoginPage } from './pages/Login'
+import { PrintDocumentPage } from './pages/PrintDocument'
 import { ProcessPage } from './pages/Process'
 import { SettingsPage } from './pages/Settings'
 import { TasksPage } from './pages/Tasks'
@@ -14,6 +15,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/print/:documentId" element={<PrintDocumentPage />} />
           <Route element={<Layout />}>
             <Route path="/" element={<Navigate to="/tasks" replace />} />
             <Route path="/tasks" element={<TasksPage />} />

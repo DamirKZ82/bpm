@@ -7,8 +7,11 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Table from '@mui/material/Table'
@@ -143,6 +146,11 @@ export function ProcessPage() {
         <Typography variant="h5" sx={{ flexGrow: 1, fontWeight: 700 }}>
           {process.subject ?? 'Документ'}
         </Typography>
+        <Tooltip title="Печатная форма">
+          <IconButton onClick={() => window.open(`/print/${process.object_id}`, '_blank')}>
+            <PrintOutlinedIcon />
+          </IconButton>
+        </Tooltip>
         <ProcessStatusBadge status={process.status} />
       </Stack>
       {process.doc_number && (

@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
-from app.models import Organization, Project
+from app.models import Organization, Position, Project
 
 router = APIRouter(prefix="/api")
 
@@ -46,4 +46,19 @@ async def ref_organizations(user: CurrentUser, session: SessionDep):
 @router.get("/refs/projects", response_model=list[ProjectRef])
 async def ref_projects(user: CurrentUser, session: SessionDep):
     rows = await session.scalars(select(Project).order_by(Project.name))
+    return list(rows)
+
+
+class PositionRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+
+
+@router.get("/refs/positions", response_model=list[PositionRef])
+async def ref_positions(user: CurrentUser, session: SessionDep):
+    rows = await session.scalars(
+        select(Position).where(Position.active.is_(True)).order_by(Position.name)
+    )
     return list(rows)

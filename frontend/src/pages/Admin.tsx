@@ -1,34 +1,8 @@
 import { Navigate, useParams } from 'react-router-dom'
 import { CrudTable } from '../components/CrudTable'
 import type { EntityConfig } from '../components/CrudTable'
+import { RouteMatrixPage } from './RouteMatrix'
 import { useAuth } from '../auth'
-
-const OBJECT_TYPES = [
-  { value: 'MEMO', label: 'Служебная записка' },
-  { value: 'CONTRACT_REQUEST', label: 'Заявка на договор' },
-  { value: 'PAYMENT_REQUEST', label: 'Заявка на оплату' },
-]
-
-const RESOLVER_TYPES = [
-  { value: 'POSITION_IN_ORG', label: 'Должность в организации' },
-  { value: 'POSITION_IN_PROJECT', label: 'Должность в проекте' },
-  { value: 'INITIATOR', label: 'Инициатор' },
-  { value: 'INITIATOR_MANAGER', label: 'Руководитель инициатора' },
-  { value: 'PROJECT_MANAGER', label: 'Руководитель проекта' },
-]
-
-const STAGE_TYPES = [
-  { value: 'SEQUENTIAL', label: 'Последовательно' },
-  { value: 'PARALLEL_ALL', label: 'Параллельно — все' },
-  { value: 'PARALLEL_ANY', label: 'Параллельно — любой' },
-  { value: 'QUORUM', label: 'Кворум N из M' },
-]
-
-const MANDATORY = [
-  { value: 'REQUIRED', label: 'Обязательно' },
-  { value: 'OPTIONAL', label: 'Опционально' },
-  { value: 'SKIP_IF_NO_ASSIGNEE', label: 'Пропустить, если нет исполнителя' },
-]
 
 const ROLES = [
   { value: 'ADMIN', label: 'Администратор' },
@@ -146,26 +120,6 @@ export const ENTITIES: Record<string, EntityConfig> = {
       { key: 'valid_to', label: 'По', type: 'date', inTable: false },
     ],
   },
-  'route-rules': {
-    title: 'Матрица согласования',
-    endpoint: '/api/admin/route-rules',
-    hint: 'Одна строка — один участник этапа. Тип этапа общий: изменение применяется ко всем участникам этапа. Пустая организация/проект = «любой». При конфликте побеждает группа с наименьшим приоритетом.',
-    fields: [
-      { key: 'object_type', label: 'Вид объекта', options: OBJECT_TYPES, required: true },
-      { key: 'organization_id', label: 'Организация', ...ORG },
-      { key: 'project_id', label: 'Проект', ...PROJ },
-      { key: 'stage_no', label: 'Этап', type: 'number', required: true },
-      { key: 'resolver_type', label: 'Адресация', options: RESOLVER_TYPES, required: true },
-      { key: 'position_id', label: 'Должность', ...POS },
-      { key: 'stage_type', label: 'Тип этапа', options: STAGE_TYPES },
-      { key: 'quorum_count', label: 'Кворум', type: 'number', inTable: false },
-      { key: 'deadline_hours', label: 'Срок, ч', type: 'number' },
-      { key: 'mandatory', label: 'Обязательность', options: MANDATORY, inTable: false },
-      { key: 'priority', label: 'Приоритет', type: 'number', required: true },
-      { key: 'valid_from', label: 'Действует с', type: 'date', inTable: false },
-      { key: 'valid_to', label: 'Действует по', type: 'date', inTable: false },
-    ],
-  },
   users: {
     title: 'Пользователи',
     endpoint: '/api/admin/users',
@@ -196,10 +150,12 @@ export function AdminPage() {
   const isAdmin = user?.roles.includes('ADMIN') ?? false
   const isMatrixEditor = isAdmin || (user?.roles.includes('MATRIX_EDITOR') ?? false)
 
-  if (!entity || !ENTITIES[entity]) return <Navigate to="/admin/organizations" replace />
-  if (!isAdmin && !(entity === 'route-rules' && isMatrixEditor)) {
-    return <Navigate to="/tasks" replace />
+  if (entity === 'route-rules') {
+    if (!isMatrixEditor) return <Navigate to="/tasks" replace />
+    return <RouteMatrixPage />
   }
+  if (!entity || !ENTITIES[entity]) return <Navigate to="/admin/organizations" replace />
+  if (!isAdmin) return <Navigate to="/tasks" replace />
 
   // навигация по разделам — в боковом меню (Справочники / Администрирование)
   return <CrudTable config={ENTITIES[entity]} />

@@ -5,9 +5,10 @@
 сущностей (правила маршрутов, назначения на проекты, замещения).
 """
 import uuid
+from datetime import date as Date
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, require_roles
@@ -24,7 +25,14 @@ from app.models import (
     Substitution,
     User,
 )
-from app.models.enums import UserRole, UserStatus
+from app.models.enums import (
+    ObjectType,
+    ResolverType,
+    RuleMandatory,
+    StageType,
+    UserRole,
+    UserStatus,
+)
 from app.schemas.auth import UserRead
 from app.schemas.directory import (
     AbsenceCreate,
@@ -259,6 +267,186 @@ async def delete_route_rule(rule_id: uuid.UUID, session: SessionDep):
 
 
 router.include_router(route_rules_router)
+
+
+# --- Маршрут целиком: карточка «объект + этапы» одной операцией ---
+# GET собирает строки route_rules в маршруты по контексту
+# (вид объекта × организация × проект), POST атомарно заменяет группу.
+# Запущенные процессы не затрагиваются: маршрут зафиксирован
+# в route_snapshot (ТЗ §4.5).
+
+class MatrixParticipant(BaseModel):
+    resolver_type: ResolverType
+    position_id: uuid.UUID | None = None
+    deadline_hours: int | None = None
+    mandatory: RuleMandatory = RuleMandatory.REQUIRED
+
+    @model_validator(mode="after")
+    def check_position(self):
+        needs_position = self.resolver_type in (
+            ResolverType.POSITION_IN_ORG,
+            ResolverType.POSITION_IN_PROJECT,
+        )
+        if needs_position and self.position_id is None:
+            raise ValueError("Для адресации по должности укажите должность")
+        return self
+
+
+class MatrixStage(BaseModel):
+    stage_type: StageType = StageType.SEQUENTIAL
+    quorum_count: int | None = None
+    participants: list[MatrixParticipant] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def check_quorum(self):
+        if self.stage_type == StageType.QUORUM and not self.quorum_count:
+            raise ValueError("Для кворума укажите количество")
+        if self.stage_type != StageType.QUORUM:
+            self.quorum_count = None
+        return self
+
+
+class MatrixContext(BaseModel):
+    object_type: ObjectType
+    organization_id: uuid.UUID | None = None
+    project_id: uuid.UUID | None = None
+
+
+class MatrixRoute(MatrixContext):
+    priority: int = 100
+    valid_from: Date | None = None
+    valid_to: Date | None = None
+    stages: list[MatrixStage] = Field(min_length=1)
+    # при редактировании со сменой контекста — прежний контекст для удаления
+    original: MatrixContext | None = None
+
+
+def _context_clause(object_type, organization_id, project_id):
+    return (
+        RouteRule.object_type == object_type,
+        RouteRule.organization_id == organization_id
+        if organization_id is not None
+        else RouteRule.organization_id.is_(None),
+        RouteRule.project_id == project_id
+        if project_id is not None
+        else RouteRule.project_id.is_(None),
+    )
+
+
+async def _delete_context_rules(session, context: MatrixContext) -> None:
+    rows = await session.scalars(
+        select(RouteRule).where(
+            *_context_clause(
+                context.object_type, context.organization_id, context.project_id
+            )
+        )
+    )
+    for rule in rows:
+        await session.delete(rule)
+
+
+matrix_router = APIRouter(
+    prefix="/route-matrix",
+    dependencies=[Depends(require_roles(UserRole.MATRIX_EDITOR))],
+)
+
+
+@matrix_router.get("", response_model=list[MatrixRoute])
+async def list_matrix_routes(session: SessionDep):
+    rules = list(
+        await session.scalars(
+            select(RouteRule).order_by(
+                RouteRule.object_type,
+                RouteRule.priority,
+                RouteRule.stage_no,
+                RouteRule.order_in_stage,
+            )
+        )
+    )
+    groups: dict[tuple, dict] = {}
+    for rule in rules:
+        key = (rule.object_type, rule.organization_id, rule.project_id)
+        group = groups.setdefault(key, {"meta": rule, "stages": {}})
+        stage = group["stages"].setdefault(
+            rule.stage_no,
+            {
+                "stage_type": rule.stage_type,
+                "quorum_count": rule.quorum_count,
+                "participants": [],
+            },
+        )
+        stage["participants"].append(
+            MatrixParticipant(
+                resolver_type=rule.resolver_type,
+                position_id=rule.position_id,
+                deadline_hours=rule.deadline_hours,
+                mandatory=rule.mandatory,
+            )
+        )
+    result = []
+    for group in groups.values():
+        meta = group["meta"]
+        result.append(
+            MatrixRoute(
+                object_type=meta.object_type,
+                organization_id=meta.organization_id,
+                project_id=meta.project_id,
+                priority=meta.priority,
+                valid_from=meta.valid_from,
+                valid_to=meta.valid_to,
+                stages=[
+                    MatrixStage(**group["stages"][no])
+                    for no in sorted(group["stages"])
+                ],
+            )
+        )
+    return result
+
+
+@matrix_router.post("", response_model=MatrixRoute)
+async def save_matrix_route(payload: MatrixRoute, session: SessionDep):
+    if payload.original is not None:
+        await _delete_context_rules(session, payload.original)
+    await _delete_context_rules(
+        session,
+        MatrixContext(
+            object_type=payload.object_type,
+            organization_id=payload.organization_id,
+            project_id=payload.project_id,
+        ),
+    )
+    for stage_index, stage in enumerate(payload.stages, start=1):
+        for participant_index, participant in enumerate(stage.participants, start=1):
+            session.add(
+                RouteRule(
+                    object_type=payload.object_type,
+                    organization_id=payload.organization_id,
+                    project_id=payload.project_id,
+                    stage_no=stage_index,
+                    order_in_stage=participant_index,
+                    resolver_type=participant.resolver_type,
+                    position_id=participant.position_id,
+                    stage_type=stage.stage_type,
+                    quorum_count=stage.quorum_count,
+                    deadline_hours=participant.deadline_hours,
+                    mandatory=participant.mandatory,
+                    priority=payload.priority,
+                    valid_from=payload.valid_from,
+                    valid_to=payload.valid_to,
+                )
+            )
+    await session.commit()
+    payload.original = None
+    return payload
+
+
+@matrix_router.post("/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_matrix_route(context: MatrixContext, session: SessionDep):
+    await _delete_context_rules(session, context)
+    await session.commit()
+
+
+router.include_router(matrix_router)
 
 
 # --- Пользователи: отдельный роутер (генерация guid, роли, привязка) ---

@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react'
+import Box from '@mui/material/Box'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import { api } from '../api/client'
+import { InfoCell, InfoGrid } from './InfoGrid'
 import type {
   DictionaryRef,
   EmployeeRef,
@@ -102,7 +99,15 @@ export function CustomFieldInputs({
   const set = (code: string, value: unknown) => onChange({ ...values, [code]: value })
 
   return (
-    <Stack spacing={2}>
+    <Box
+      sx={{
+        display: 'grid',
+        gap: 2,
+        alignItems: 'center',
+        gridTemplateColumns:
+          'repeat(auto-fill, minmax(max(230px, calc(25% - 16px)), 1fr))',
+      }}
+    >
       {fields.map((field) => {
         const value = values[field.code]
         switch (field.field_type) {
@@ -148,6 +153,7 @@ export function CustomFieldInputs({
                 disabled={disabled}
                 multiline
                 minRows={3}
+                sx={{ gridColumn: '1 / -1' }}
                 value={value == null ? '' : String(value)}
                 onChange={(e) => set(field.code, e.target.value)}
               />
@@ -177,7 +183,7 @@ export function CustomFieldInputs({
             )
         }
       })}
-    </Stack>
+    </Box>
   )
 }
 
@@ -193,17 +199,15 @@ export function CustomFieldValues({
 }) {
   if (fields.length === 0) return null
   return (
-    <Table size="small" sx={{ '& td': { border: 0, py: 0.5 } }}>
-      <TableBody>
-        {fields.map((field) => (
-          <TableRow key={field.id}>
-            <TableCell sx={{ color: 'text.secondary', width: 220 }}>
-              {field.name}
-            </TableCell>
-            <TableCell>{customFieldDisplay(field, values[field.code], refs)}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <InfoGrid>
+      {fields.map((field) => (
+        <InfoCell
+          key={field.id}
+          label={field.name}
+          value={customFieldDisplay(field, values[field.code], refs)}
+          span={field.field_type === 'TEXT'}
+        />
+      ))}
+    </InfoGrid>
   )
 }

@@ -31,6 +31,7 @@ import type {
 } from '../api/types'
 import { Attachments } from '../components/Attachments'
 import { CustomFieldValues, useRefsData } from '../components/CustomFields'
+import { InfoCell, InfoGrid } from '../components/InfoGrid'
 import { ProcessStatusBadge, TaskStatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth'
 
@@ -169,30 +170,13 @@ export function ProcessPage() {
       {tab === 0 && (
         <>
           <Paper sx={{ p: 2.5, mb: 2 }}>
-            <Table size="small" sx={{ '& td': { border: 0, py: 0.5 } }}>
-              <TableBody>
-                <TableRow>
-                  <TableCell sx={{ color: 'text.secondary', width: 160 }}>Организация</TableCell>
-                  <TableCell>{process.organization_name ?? '—'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={{ color: 'text.secondary' }}>Проект</TableCell>
-                  <TableCell>{process.project_name ?? '—'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={{ color: 'text.secondary' }}>Инициатор</TableCell>
-                  <TableCell>{process.initiator_name ?? '—'}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={{ color: 'text.secondary' }}>Запущен</TableCell>
-                  <TableCell>{formatDateTime(process.started_at)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={{ color: 'text.secondary' }}>Завершён</TableCell>
-                  <TableCell>{formatDateTime(process.completed_at)}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <InfoGrid>
+              <InfoCell label="Организация" value={process.organization_name ?? '—'} />
+              <InfoCell label="Проект" value={process.project_name ?? '—'} />
+              <InfoCell label="Инициатор" value={process.initiator_name ?? '—'} />
+              <InfoCell label="Запущен" value={formatDateTime(process.started_at)} />
+              <InfoCell label="Завершён" value={formatDateTime(process.completed_at)} />
+            </InfoGrid>
             {(isInitiator || isAdmin) && active && (
               <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
                 {isInitiator && (

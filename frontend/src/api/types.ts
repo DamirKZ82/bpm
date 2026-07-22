@@ -128,6 +128,7 @@ export interface Process {
   project_name: string | null
   doc_number: string | null
   doc_date: string | null
+  doc_body: string | null
   status: ProcessStatus
   route_snapshot: { stages: RouteStageSnapshot[] } | null
   started_at: string | null

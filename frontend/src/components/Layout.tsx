@@ -173,22 +173,41 @@ export function Layout() {
           },
         }}
       >
-        <Stack
-          direction="row"
-          sx={{
-            px: collapsed ? 1 : 2.5,
-            py: 2,
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'space-between',
-          }}
-        >
-          {!collapsed && <Logo height={32} />}
-          <Tooltip title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}>
-            <IconButton size="small" onClick={toggleCollapsed} sx={{ color: NAV_TEXT }}>
-              {collapsed ? <MenuIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-        </Stack>
+        {collapsed ? (
+          <Stack sx={{ alignItems: 'center', pt: 2, pb: 1 }} spacing={0.5}>
+            <Logo mark height={30} />
+            <Tooltip title="Развернуть меню">
+              <IconButton
+                size="small"
+                onClick={toggleCollapsed}
+                sx={{ color: 'text.secondary', p: 0.4 }}
+              >
+                <MenuIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        ) : (
+          <Stack
+            direction="row"
+            sx={{
+              px: 2.5,
+              py: 2,
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Logo height={32} />
+            <Tooltip title="Свернуть меню">
+              <IconButton
+                size="small"
+                onClick={toggleCollapsed}
+                sx={{ color: 'text.secondary', p: 0.4 }}
+              >
+                <ChevronLeftIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        )}
 
         <List sx={{ flexGrow: 1, pt: 0 }}>
           <Tooltip title={collapsed ? 'Мои задачи' : ''} placement="right">

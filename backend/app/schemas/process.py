@@ -129,6 +129,7 @@ class ProcessRead(BaseModel):
     subject: str | None = None
     doc_number: str | None = None
     doc_date: Date | None = None
+    doc_body: str | None = None
     tasks: list[TaskRead] = []
     audit: list[AuditRead] = []
 

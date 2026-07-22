@@ -81,6 +81,7 @@ async def get_process(process_id: uuid.UUID, user: CurrentUser, session: Session
             result.subject = memo.subject
             result.doc_number = memo.number
             result.doc_date = memo.date
+            result.doc_body = memo.body
 
     tasks = list(
         await session.scalars(

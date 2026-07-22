@@ -72,17 +72,6 @@ const newField = (): FieldRow => ({
   required: false,
 })
 
-const fieldTypeLabel = (row: FieldRow, dictionaries: DictionaryRef[]): string => {
-  if (row.field_type === 'REF') {
-    if (row.ref_target === 'DICTIONARY') {
-      const dictionary = dictionaries.find((d) => d.id === row.dictionary_id)
-      return `Справочник: ${dictionary?.name ?? '?'}`
-    }
-    return REF_TARGETS.find((t) => t.value === row.ref_target)?.label ?? 'Ссылка'
-  }
-  return FIELD_TYPES.find((t) => t.value === row.field_type)?.label ?? row.field_type
-}
-
 export function DocumentTypesPage() {
   const [types, setTypes] = useState<DocType[] | null>(null)
   const [dictionaries, setDictionaries] = useState<DictionaryRef[]>([])
@@ -266,12 +255,12 @@ export function DocumentTypesPage() {
               </Typography>
               {editing.fields.map((field, index) => (
                 <Paper key={field.code} sx={{ p: 1.5, mb: 1.5, bgcolor: '#fafbfd' }}>
-                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                     <TextField
                       label="Название поля"
                       size="small"
                       required
-                      sx={{ width: 240, flexShrink: 0 }}
+                      sx={{ flexGrow: 1 }}
                       value={field.name}
                       onChange={(e) => patchField(index, { name: e.target.value })}
                     />
@@ -279,7 +268,7 @@ export function DocumentTypesPage() {
                       select
                       label="Тип"
                       size="small"
-                      sx={{ width: 210, flexShrink: 0 }}
+                      sx={{ width: 220, flexShrink: 0 }}
                       value={field.field_type}
                       onChange={(e) =>
                         patchField(index, {
@@ -294,12 +283,41 @@ export function DocumentTypesPage() {
                         <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
                       ))}
                     </TextField>
-                    {field.field_type === 'REF' && (
+                    <FormControlLabel
+                      sx={{ flexShrink: 0, mr: 0 }}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={field.required}
+                          onChange={(e) =>
+                            patchField(index, { required: e.target.checked })
+                          }
+                        />
+                      }
+                      label="Обязательное"
+                    />
+                    <Tooltip title="Удалить поле">
+                      <IconButton
+                        size="small"
+                        sx={{ flexShrink: 0 }}
+                        onClick={() =>
+                          setEditing({
+                            ...editing,
+                            fields: editing.fields.filter((_, i) => i !== index),
+                          })
+                        }
+                      >
+                        <DeleteOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                  {field.field_type === 'REF' && (
+                    <Stack direction="row" spacing={1.5} sx={{ mt: 1.5 }}>
                       <TextField
                         select
                         label="Справочник"
                         size="small"
-                        sx={{ width: 230, flexShrink: 0 }}
+                        sx={{ width: 260, flexShrink: 0 }}
                         value={field.ref_target ?? ''}
                         onChange={(e) =>
                           patchField(index, {
@@ -312,54 +330,24 @@ export function DocumentTypesPage() {
                           <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
                         ))}
                       </TextField>
-                    )}
-                    {field.field_type === 'REF' && field.ref_target === 'DICTIONARY' && (
-                      <TextField
-                        select
-                        label="Какой справочник"
-                        size="small"
-                        sx={{ width: 230, flexShrink: 0 }}
-                        value={field.dictionary_id ?? ''}
-                        onChange={(e) =>
-                          patchField(index, { dictionary_id: e.target.value || null })
-                        }
-                      >
-                        {dictionaries.map((d) => (
-                          <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
-                        ))}
-                      </TextField>
-                    )}
-                    <FormControlLabel
-                      sx={{ flexShrink: 0 }}
-                      control={
-                        <Checkbox
+                      {field.ref_target === 'DICTIONARY' && (
+                        <TextField
+                          select
+                          label="Какой справочник"
                           size="small"
-                          checked={field.required}
+                          sx={{ width: 260, flexShrink: 0 }}
+                          value={field.dictionary_id ?? ''}
                           onChange={(e) =>
-                            patchField(index, { required: e.target.checked })
+                            patchField(index, { dictionary_id: e.target.value || null })
                           }
-                        />
-                      }
-                      label="Обязательное"
-                    />
-                    <div style={{ flexGrow: 1 }} />
-                    <Tooltip title="Удалить поле">
-                      <IconButton
-                        size="small"
-                        onClick={() =>
-                          setEditing({
-                            ...editing,
-                            fields: editing.fields.filter((_, i) => i !== index),
-                          })
-                        }
-                      >
-                        <DeleteOutlinedIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    {fieldTypeLabel(field, dictionaries)}
-                  </Typography>
+                        >
+                          {dictionaries.map((d) => (
+                            <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
+                          ))}
+                        </TextField>
+                      )}
+                    </Stack>
+                  )}
                 </Paper>
               ))}
               <Button

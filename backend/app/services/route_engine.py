@@ -22,7 +22,6 @@ from app.models import (
 )
 from app.models.enums import (
     EmployeeStatus,
-    ObjectType,
     ResolverType,
     RuleMandatory,
     StageType,
@@ -68,7 +67,7 @@ def route_to_snapshot(stages: list[RouteStage]) -> dict:
 async def build_route(
     session: AsyncSession,
     *,
-    object_type: ObjectType,
+    object_type: str,
     organization_id: uuid.UUID,
     project_id: uuid.UUID | None,
     initiator_employee_id: uuid.UUID,

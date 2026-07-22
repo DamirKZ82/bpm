@@ -35,7 +35,7 @@ export function Attachments({
   const [busy, setBusy] = useState(false)
 
   const reload = useCallback(() => {
-    api<Attachment[]>(`/api/memos/${memoId}/attachments`)
+    api<Attachment[]>(`/api/documents/${memoId}/attachments`)
       .then(setItems)
       .catch(() => setItems([]))
   }, [memoId])
@@ -50,7 +50,7 @@ export function Attachments({
       for (const file of Array.from(files)) {
         const form = new FormData()
         form.append('file', file)
-        await api(`/api/memos/${memoId}/attachments`, { method: 'POST', body: form })
+        await api(`/api/documents/${memoId}/attachments`, { method: 'POST', body: form })
       }
       reload()
     } catch (err) {

@@ -16,13 +16,7 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
-import type { OrganizationRef, ProjectRef } from '../api/types'
-
-const OBJECT_TYPES = [
-  { value: 'MEMO', label: 'Служебная записка' },
-  { value: 'CONTRACT_REQUEST', label: 'Заявка на договор' },
-  { value: 'PAYMENT_REQUEST', label: 'Заявка на оплату' },
-]
+import type { DocumentTypeRef, OrganizationRef, ProjectRef } from '../api/types'
 
 const RESOLVER_TYPES = [
   { value: 'POSITION_IN_ORG', label: 'Должность в организации' },
@@ -97,6 +91,7 @@ const contextOf = (route: Route) => ({
 
 export function RouteMatrixPage() {
   const [routes, setRoutes] = useState<Route[] | null>(null)
+  const [docTypes, setDocTypes] = useState<DocumentTypeRef[]>([])
   const [positions, setPositions] = useState<PositionRef[]>([])
   const [organizations, setOrganizations] = useState<OrganizationRef[]>([])
   const [projects, setProjects] = useState<ProjectRef[]>([])
@@ -112,10 +107,13 @@ export function RouteMatrixPage() {
 
   useEffect(() => {
     reload()
+    api<DocumentTypeRef[]>('/api/refs/document-types').then(setDocTypes)
     api<PositionRef[]>('/api/refs/positions').then(setPositions)
     api<OrganizationRef[]>('/api/refs/organizations').then(setOrganizations)
     api<ProjectRef[]>('/api/refs/projects').then(setProjects)
   }, [reload])
+
+  const OBJECT_TYPES = docTypes.map((t) => ({ value: t.code, label: t.name }))
 
   const positionName = (id: string | null) =>
     positions.find((p) => p.id === id)?.name ?? '?'

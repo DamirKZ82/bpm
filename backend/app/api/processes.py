@@ -6,15 +6,15 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     AuditLog,
+    Document,
     Employee,
-    Memo,
     Organization,
     ProcessInstance,
     Project,
     Task,
     User,
 )
-from app.models.enums import ObjectType, UserRole
+from app.models.enums import UserRole
 from app.schemas.process import (
     AuditRead,
     ForceCloseRequest,
@@ -75,13 +75,12 @@ async def get_process(process_id: uuid.UUID, user: CurrentUser, session: Session
             select(Project.name).where(Project.id == process.project_id)
         )
 
-    if process.object_type == ObjectType.MEMO:
-        memo = await session.get(Memo, process.object_id)
-        if memo:
-            result.subject = memo.subject
-            result.doc_number = memo.number
-            result.doc_date = memo.date
-            result.doc_body = memo.body
+    document = await session.get(Document, process.object_id)
+    if document:
+        result.subject = document.subject
+        result.doc_number = document.number
+        result.doc_date = document.date
+        result.doc_body = document.body
 
     tasks = list(
         await session.scalars(

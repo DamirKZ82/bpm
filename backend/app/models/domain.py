@@ -7,8 +7,11 @@ from sqlalchemy import ForeignKey, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from sqlalchemy import text as sa_text
+from sqlalchemy.dialects.postgresql import JSONB
+
 from app.models.base import Base, UUIDPKMixin, utcnow
-from app.models.enums import ContractSyncStatus, CounterpartySyncStatus, ObjectType
+from app.models.enums import ContractSyncStatus, CounterpartySyncStatus
 
 
 class Counterparty(UUIDPKMixin, Base):
@@ -60,16 +63,20 @@ class Contract(UUIDPKMixin, Base):
     )
 
 
-class Memo(UUIDPKMixin, Base):
-    """Служебная записка — первый вид объекта (этап 3 внедрения).
+class Document(UUIDPKMixin, Base):
+    """Документ любого вида (вид — динамический, из document_types).
 
-    Обязательные реквизиты любого документа: номер (автонумерация),
-    дата, организация, проект. Организация/проект в БД nullable
+    Стандартная шапка: номер (автонумерация по виду), дата, организация,
+    проект, тема, содержание. Организация/проект в БД nullable
     (исторические данные), обязательность обеспечивает API.
+    Настраиваемые поля вида — в custom_fields (JSONB).
     """
 
-    __tablename__ = "memos"
+    __tablename__ = "documents"
 
+    type_code: Mapped[str] = mapped_column(
+        String(50), ForeignKey("document_types.code")
+    )
     number: Mapped[str] = mapped_column(String(50), unique=True)
     date: Mapped[date]
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -78,6 +85,9 @@ class Memo(UUIDPKMixin, Base):
     project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id"))
     subject: Mapped[str] = mapped_column(String(500))
     body: Mapped[str] = mapped_column(Text)
+    custom_fields: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=sa_text("'{}'::jsonb")
+    )
     department_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("departments.id")
     )
@@ -93,7 +103,7 @@ class Attachment(UUIDPKMixin, Base):
 
     __tablename__ = "attachments"
 
-    object_type: Mapped[ObjectType]
+    object_type: Mapped[str] = mapped_column(String(50))
     object_id: Mapped[uuid.UUID] = mapped_column(index=True)
     filename: Mapped[str] = mapped_column(String(500))
     content_type: Mapped[str | None] = mapped_column(String(200))

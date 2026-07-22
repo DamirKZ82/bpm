@@ -6,8 +6,17 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
-from app.models import Organization, Position, Project
-from app.models.enums import ObjectType
+from app.models import (
+    Dictionary,
+    DictionaryItem,
+    DocumentType,
+    DocumentTypeField,
+    Employee,
+    Organization,
+    Position,
+    Project,
+)
+from app.models.enums import EmployeeStatus
 from app.services.route_engine import RouteError, build_route, route_to_snapshot
 
 router = APIRouter(prefix="/api")
@@ -67,6 +76,116 @@ async def ref_positions(user: CurrentUser, session: SessionDep):
     return list(rows)
 
 
+class TypeFieldRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    code: str
+    name: str
+    field_type: str
+    ref_target: str | None
+    dictionary_id: uuid.UUID | None
+    required: bool
+    sort_order: int
+
+
+class DocumentTypeRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    code: str
+    name: str
+    prefix: str
+    is_system: bool
+    fields: list[TypeFieldRef] = []
+
+
+@router.get("/refs/document-types", response_model=list[DocumentTypeRef])
+async def ref_document_types(user: CurrentUser, session: SessionDep):
+    """Активные виды документов с описаниями полей — для навигации
+    и динамических форм."""
+    types = list(
+        await session.scalars(
+            select(DocumentType)
+            .where(DocumentType.active.is_(True))
+            .order_by(DocumentType.created_at)
+        )
+    )
+    fields = list(
+        await session.scalars(
+            select(DocumentTypeField).order_by(DocumentTypeField.sort_order)
+        )
+    )
+    result = []
+    for doc_type in types:
+        item = DocumentTypeRef.model_validate(doc_type)
+        item.fields = [
+            TypeFieldRef.model_validate(f)
+            for f in fields
+            if f.document_type_id == doc_type.id
+        ]
+        result.append(item)
+    return result
+
+
+class EmployeeRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    full_name: str
+
+
+@router.get("/refs/employees", response_model=list[EmployeeRef])
+async def ref_employees(user: CurrentUser, session: SessionDep):
+    rows = await session.scalars(
+        select(Employee)
+        .where(Employee.status == EmployeeStatus.ACTIVE)
+        .order_by(Employee.full_name)
+    )
+    return list(rows)
+
+
+class DictionaryItemRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+
+
+class DictionaryRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    items: list[DictionaryItemRef] = []
+
+
+@router.get("/refs/dictionaries", response_model=list[DictionaryRef])
+async def ref_dictionaries(user: CurrentUser, session: SessionDep):
+    dictionaries = list(
+        await session.scalars(
+            select(Dictionary).where(Dictionary.active.is_(True)).order_by(Dictionary.name)
+        )
+    )
+    items = list(
+        await session.scalars(
+            select(DictionaryItem)
+            .where(DictionaryItem.active.is_(True))
+            .order_by(DictionaryItem.sort_order, DictionaryItem.name)
+        )
+    )
+    result = []
+    for dictionary in dictionaries:
+        ref = DictionaryRef.model_validate(dictionary)
+        ref.items = [
+            DictionaryItemRef.model_validate(i)
+            for i in items
+            if i.dictionary_id == dictionary.id
+        ]
+        result.append(ref)
+    return result
+
+
 class RoutePreview(BaseModel):
     ok: bool
     error: str | None = None
@@ -75,7 +194,7 @@ class RoutePreview(BaseModel):
 
 @router.get("/route-preview", response_model=RoutePreview)
 async def route_preview(
-    object_type: ObjectType,
+    object_type: str,
     organization_id: uuid.UUID,
     user: CurrentUser,
     session: SessionDep,

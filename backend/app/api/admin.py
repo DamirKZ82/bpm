@@ -15,6 +15,11 @@ from app.api.deps import SessionDep, require_roles
 from app.models import (
     Absence,
     Department,
+    Dictionary,
+    DictionaryItem,
+    Document,
+    DocumentType,
+    DocumentTypeField,
     Employee,
     Employment,
     Organization,
@@ -26,7 +31,8 @@ from app.models import (
     User,
 )
 from app.models.enums import (
-    ObjectType,
+    FieldType,
+    RefTarget,
     ResolverType,
     RuleMandatory,
     StageType,
@@ -307,7 +313,7 @@ class MatrixStage(BaseModel):
 
 
 class MatrixContext(BaseModel):
-    object_type: ObjectType
+    object_type: str  # code вида документа
     organization_id: uuid.UUID | None = None
     project_id: uuid.UUID | None = None
 
@@ -405,6 +411,13 @@ async def list_matrix_routes(session: SessionDep):
 
 @matrix_router.post("", response_model=MatrixRoute)
 async def save_matrix_route(payload: MatrixRoute, session: SessionDep):
+    type_exists = await session.scalar(
+        select(DocumentType.id).where(DocumentType.code == payload.object_type)
+    )
+    if type_exists is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Вид документа не найден"
+        )
     if payload.original is not None:
         await _delete_context_rules(session, payload.original)
     await _delete_context_rules(
@@ -447,6 +460,332 @@ async def delete_matrix_route(context: MatrixContext, session: SessionDep):
 
 
 router.include_router(matrix_router)
+
+
+# --- Конструктор видов документов ---
+# Вид = стандартная шапка + настраиваемые поля; поля редактируются
+# вместе с видом одной формой (замена списка с сохранением id).
+
+_FIELD_TYPES = {t.value for t in FieldType}
+_REF_TARGETS = {t.value for t in RefTarget}
+
+
+class TypeFieldIn(BaseModel):
+    id: uuid.UUID | None = None
+    code: str = Field(min_length=1, max_length=50, pattern=r"^[a-z0-9_]+$")
+    name: str = Field(min_length=1, max_length=200)
+    field_type: str
+    ref_target: str | None = None
+    dictionary_id: uuid.UUID | None = None
+    required: bool = False
+
+    @model_validator(mode="after")
+    def check(self):
+        if self.field_type not in _FIELD_TYPES:
+            raise ValueError(f"Неизвестный тип поля: {self.field_type}")
+        if self.field_type == FieldType.REF:
+            if self.ref_target not in _REF_TARGETS:
+                raise ValueError("Для ссылочного поля укажите справочник")
+            if self.ref_target == RefTarget.DICTIONARY and self.dictionary_id is None:
+                raise ValueError("Укажите пользовательский справочник")
+        else:
+            self.ref_target = None
+            self.dictionary_id = None
+        return self
+
+
+class DocumentTypeIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    prefix: str = Field(min_length=1, max_length=10)
+    active: bool = True
+    fields: list[TypeFieldIn] = []
+
+    @model_validator(mode="after")
+    def check_codes(self):
+        codes = [f.code for f in self.fields]
+        if len(codes) != len(set(codes)):
+            raise ValueError("Коды полей должны быть уникальны")
+        return self
+
+
+class TypeFieldRead(TypeFieldIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    sort_order: int = 0
+
+
+class DocumentTypeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    code: str
+    name: str
+    prefix: str
+    is_system: bool
+    active: bool
+    last_number: int
+    fields: list[TypeFieldRead] = []
+
+
+doc_types_router = APIRouter(
+    prefix="/document-types", dependencies=[Depends(require_roles())]
+)
+
+
+async def _type_read(session, doc_type: DocumentType) -> DocumentTypeRead:
+    result = DocumentTypeRead.model_validate(doc_type)
+    rows = await session.scalars(
+        select(DocumentTypeField)
+        .where(DocumentTypeField.document_type_id == doc_type.id)
+        .order_by(DocumentTypeField.sort_order)
+    )
+    result.fields = [TypeFieldRead.model_validate(f) for f in rows]
+    return result
+
+
+@doc_types_router.get("", response_model=list[DocumentTypeRead])
+async def list_document_types(session: SessionDep):
+    types = await session.scalars(
+        select(DocumentType).order_by(DocumentType.created_at)
+    )
+    return [await _type_read(session, t) for t in types]
+
+
+async def _apply_fields(
+    session, doc_type: DocumentType, fields: list[TypeFieldIn]
+) -> None:
+    existing = {
+        f.id: f
+        for f in await session.scalars(
+            select(DocumentTypeField).where(
+                DocumentTypeField.document_type_id == doc_type.id
+            )
+        )
+    }
+    keep: set[uuid.UUID] = set()
+    for order, field in enumerate(fields):
+        if field.id is not None and field.id in existing:
+            row = existing[field.id]
+            row.code = field.code
+            row.name = field.name
+            row.field_type = field.field_type
+            row.ref_target = field.ref_target
+            row.dictionary_id = field.dictionary_id
+            row.required = field.required
+            row.sort_order = order
+            keep.add(row.id)
+        else:
+            session.add(
+                DocumentTypeField(
+                    document_type_id=doc_type.id,
+                    code=field.code,
+                    name=field.name,
+                    field_type=field.field_type,
+                    ref_target=field.ref_target,
+                    dictionary_id=field.dictionary_id,
+                    required=field.required,
+                    sort_order=order,
+                )
+            )
+    for row_id, row in existing.items():
+        if row_id not in keep:
+            await session.delete(row)
+
+
+@doc_types_router.post(
+    "", response_model=DocumentTypeRead, status_code=status.HTTP_201_CREATED
+)
+async def create_document_type(payload: DocumentTypeIn, session: SessionDep):
+    doc_type = DocumentType(
+        code=f"DOC_{uuid.uuid4().hex[:8].upper()}",
+        name=payload.name,
+        prefix=payload.prefix,
+        active=payload.active,
+    )
+    session.add(doc_type)
+    await session.flush()
+    await _apply_fields(session, doc_type, payload.fields)
+    await session.commit()
+    return await _type_read(session, doc_type)
+
+
+@doc_types_router.put("/{type_id}", response_model=DocumentTypeRead)
+async def update_document_type(
+    type_id: uuid.UUID, payload: DocumentTypeIn, session: SessionDep
+):
+    doc_type = await session.get(DocumentType, type_id)
+    if doc_type is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    doc_type.name = payload.name
+    doc_type.prefix = payload.prefix
+    doc_type.active = payload.active
+    await _apply_fields(session, doc_type, payload.fields)
+    await session.commit()
+    return await _type_read(session, doc_type)
+
+
+@doc_types_router.delete("/{type_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document_type(type_id: uuid.UUID, session: SessionDep):
+    doc_type = await session.get(DocumentType, type_id)
+    if doc_type is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    if doc_type.is_system:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Системный вид удалить нельзя"
+        )
+    has_documents = await session.scalar(
+        select(Document.id).where(Document.type_code == doc_type.code).limit(1)
+    )
+    if has_documents is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "По виду уже есть документы — деактивируйте его вместо удаления",
+        )
+    rules = await session.scalars(
+        select(RouteRule).where(RouteRule.object_type == doc_type.code)
+    )
+    for rule in rules:
+        await session.delete(rule)
+    await session.delete(doc_type)
+    await session.commit()
+
+
+router.include_router(doc_types_router)
+
+
+# --- Пользовательские справочники ---
+
+class DictionaryItemIn(BaseModel):
+    id: uuid.UUID | None = None
+    name: str = Field(min_length=1, max_length=500)
+    active: bool = True
+
+
+class DictionaryIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    active: bool = True
+    items: list[DictionaryItemIn] = []
+
+
+class DictionaryItemRead(DictionaryItemIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+
+
+class DictionaryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    active: bool
+    items: list[DictionaryItemRead] = []
+
+
+dictionaries_router = APIRouter(
+    prefix="/dictionaries", dependencies=[Depends(require_roles())]
+)
+
+
+async def _dictionary_read(session, dictionary: Dictionary) -> DictionaryRead:
+    result = DictionaryRead.model_validate(dictionary)
+    rows = await session.scalars(
+        select(DictionaryItem)
+        .where(DictionaryItem.dictionary_id == dictionary.id)
+        .order_by(DictionaryItem.sort_order, DictionaryItem.name)
+    )
+    result.items = [DictionaryItemRead.model_validate(i) for i in rows]
+    return result
+
+
+@dictionaries_router.get("", response_model=list[DictionaryRead])
+async def list_dictionaries(session: SessionDep):
+    dictionaries = await session.scalars(select(Dictionary).order_by(Dictionary.name))
+    return [await _dictionary_read(session, d) for d in dictionaries]
+
+
+async def _apply_items(
+    session, dictionary: Dictionary, items: list[DictionaryItemIn]
+) -> None:
+    existing = {
+        i.id: i
+        for i in await session.scalars(
+            select(DictionaryItem).where(
+                DictionaryItem.dictionary_id == dictionary.id
+            )
+        )
+    }
+    keep: set[uuid.UUID] = set()
+    for order, item in enumerate(items):
+        if item.id is not None and item.id in existing:
+            row = existing[item.id]
+            row.name = item.name
+            row.active = item.active
+            row.sort_order = order
+            keep.add(row.id)
+        else:
+            session.add(
+                DictionaryItem(
+                    dictionary_id=dictionary.id,
+                    name=item.name,
+                    active=item.active,
+                    sort_order=order,
+                )
+            )
+    for row_id, row in existing.items():
+        if row_id not in keep:
+            await session.delete(row)
+
+
+@dictionaries_router.post(
+    "", response_model=DictionaryRead, status_code=status.HTTP_201_CREATED
+)
+async def create_dictionary(payload: DictionaryIn, session: SessionDep):
+    dictionary = Dictionary(name=payload.name, active=payload.active)
+    session.add(dictionary)
+    await session.flush()
+    await _apply_items(session, dictionary, payload.items)
+    await session.commit()
+    return await _dictionary_read(session, dictionary)
+
+
+@dictionaries_router.put("/{dictionary_id}", response_model=DictionaryRead)
+async def update_dictionary(
+    dictionary_id: uuid.UUID, payload: DictionaryIn, session: SessionDep
+):
+    dictionary = await session.get(Dictionary, dictionary_id)
+    if dictionary is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    dictionary.name = payload.name
+    dictionary.active = payload.active
+    await _apply_items(session, dictionary, payload.items)
+    await session.commit()
+    return await _dictionary_read(session, dictionary)
+
+
+@dictionaries_router.delete(
+    "/{dictionary_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_dictionary(dictionary_id: uuid.UUID, session: SessionDep):
+    dictionary = await session.get(Dictionary, dictionary_id)
+    if dictionary is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    used = await session.scalar(
+        select(DocumentTypeField.id)
+        .where(DocumentTypeField.dictionary_id == dictionary_id)
+        .limit(1)
+    )
+    if used is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Справочник используется в полях видов документов",
+        )
+    await session.delete(dictionary)
+    await session.commit()
+
+
+router.include_router(dictionaries_router)
 
 
 # --- Пользователи: отдельный роутер (генерация guid, роли, привязка) ---

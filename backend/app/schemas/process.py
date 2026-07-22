@@ -6,28 +6,32 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import ObjectType, ProcessStatus, TaskResult, TaskStatus
+from app.models.enums import ProcessStatus, TaskResult, TaskStatus
 
 
-class MemoCreate(BaseModel):
+class DocumentCreate(BaseModel):
     """Номер присваивается автоматически; дата, организация и проект —
-    обязательные реквизиты любого документа."""
+    обязательные реквизиты любого документа. custom_fields — значения
+    настраиваемых полей вида (валидируются по document_type_fields)."""
 
+    type_code: str
     subject: str
     body: str
     date: Date | None = None  # None = сегодня
     organization_id: uuid.UUID
     project_id: uuid.UUID
     department_id: uuid.UUID | None = None
+    custom_fields: dict[str, Any] = {}
 
 
-class MemoUpdate(BaseModel):
+class DocumentUpdate(BaseModel):
     subject: str | None = None
     body: str | None = None
     date: Date | None = None
     organization_id: uuid.UUID | None = None
     project_id: uuid.UUID | None = None
     department_id: uuid.UUID | None = None
+    custom_fields: dict[str, Any] | None = None
 
 
 class ProcessBrief(BaseModel):
@@ -39,10 +43,11 @@ class ProcessBrief(BaseModel):
     completed_at: datetime | None
 
 
-class MemoRead(BaseModel):
+class DocumentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    type_code: str
     number: str
     date: Date
     organization_id: uuid.UUID | None
@@ -51,6 +56,7 @@ class MemoRead(BaseModel):
     project_name: str | None = None
     subject: str
     body: str
+    custom_fields: dict[str, Any]
     department_id: uuid.UUID | None
     author_id: uuid.UUID | None
     author_name: str | None = None
@@ -87,8 +93,9 @@ class TaskRead(BaseModel):
 
 
 class MyTaskRead(TaskRead):
-    object_type: ObjectType | None = None
+    object_type: str | None = None
     subject: str | None = None
+    doc_number: str | None = None
     initiator_name: str | None = None
     process_started_at: datetime | None = None
 
@@ -114,7 +121,7 @@ class ProcessRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    object_type: ObjectType
+    object_type: str
     object_id: uuid.UUID
     initiator_id: uuid.UUID
     initiator_name: str | None = None

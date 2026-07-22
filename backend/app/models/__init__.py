@@ -9,7 +9,13 @@ from app.models.directory import (
     Project,
     User,
 )
-from app.models.domain import Attachment, Contract, Counterparty, Memo
+from app.models.document_types import (
+    Dictionary,
+    DictionaryItem,
+    DocumentType,
+    DocumentTypeField,
+)
+from app.models.domain import Attachment, Contract, Counterparty, Document
 from app.models.integration import ExternalMapping, IntegrationOutbox, SyncLog
 from app.models.process import AuditLog, ProcessInstance, Task
 from app.models.routing import ProjectAssignment, RouteRule, Substitution
@@ -24,11 +30,15 @@ __all__ = [
     "Contract",
     "Counterparty",
     "Department",
+    "Dictionary",
+    "DictionaryItem",
+    "Document",
+    "DocumentType",
+    "DocumentTypeField",
     "Employee",
     "Employment",
     "ExternalMapping",
     "IntegrationOutbox",
-    "Memo",
     "Organization",
     "Position",
     "ProcessInstance",

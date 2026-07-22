@@ -1,12 +1,26 @@
 from enum import StrEnum
 
 
-class ObjectType(StrEnum):
-    """Виды согласуемых объектов (ТЗ §4.1)."""
+# Виды документов теперь динамические (таблица document_types);
+# в object_type-колонках хранится code вида документа.
 
-    MEMO = "MEMO"                          # служебная записка
-    CONTRACT_REQUEST = "CONTRACT_REQUEST"  # заявка на договор
-    PAYMENT_REQUEST = "PAYMENT_REQUEST"    # заявка на оплату
+class FieldType(StrEnum):
+    """Типы настраиваемых полей документов."""
+
+    STRING = "STRING"
+    TEXT = "TEXT"
+    NUMBER = "NUMBER"
+    MONEY = "MONEY"
+    DATE = "DATE"
+    BOOLEAN = "BOOLEAN"
+    REF = "REF"
+
+
+class RefTarget(StrEnum):
+    EMPLOYEE = "EMPLOYEE"
+    ORGANIZATION = "ORGANIZATION"
+    PROJECT = "PROJECT"
+    DICTIONARY = "DICTIONARY"
 
 
 class ResolverType(StrEnum):

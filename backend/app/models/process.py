@@ -8,13 +8,14 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, UUIDPKMixin, utcnow
-from app.models.enums import ObjectType, ProcessStatus, TaskResult, TaskStatus
+from app.models.enums import ProcessStatus, TaskResult, TaskStatus
 
 
 class ProcessInstance(UUIDPKMixin, Base):
     __tablename__ = "process_instances"
 
-    object_type: Mapped[ObjectType]
+    # code вида документа из document_types
+    object_type: Mapped[str] = mapped_column(String(50))
     object_id: Mapped[uuid.UUID]
     initiator_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"))

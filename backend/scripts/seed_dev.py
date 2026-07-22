@@ -9,12 +9,25 @@ import uuid
 from sqlalchemy import select
 
 from app.core.db import async_session
-from app.models import User
+from app.models import DocumentType, User
 from app.models.enums import UserRole
 
 
 async def main() -> None:
     async with async_session() as session:
+        # системный вид «Служебная записка» (нужен после очистки БД)
+        memo_type = await session.scalar(
+            select(DocumentType).where(DocumentType.code == "MEMO")
+        )
+        if memo_type is None:
+            session.add(
+                DocumentType(
+                    code="MEMO", name="Служебная записка", prefix="СЗ",
+                    is_system=True, active=True, last_number=0,
+                )
+            )
+            await session.commit()
+            print("Создан системный вид документа: Служебная записка")
         admin = await session.scalar(
             select(User).where(User.ad_sam_account_name == "admin")
         )

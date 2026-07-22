@@ -22,6 +22,8 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import MenuIcon from '@mui/icons-material/Menu'
 import TaskAltIcon from '@mui/icons-material/TaskAlt'
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { api } from '../api/client'
+import type { DocumentTypeRef } from '../api/types'
 import { useAuth } from '../auth'
 import { Logo } from './Logo'
 
@@ -90,16 +92,25 @@ export function Layout() {
   const isAdmin = user?.roles.includes('ADMIN') ?? false
   const isMatrixEditor = isAdmin || (user?.roles.includes('MATRIX_EDITOR') ?? false)
 
+  // виды документов — динамические, из конструктора
+  const [docTypes, setDocTypes] = useState<DocumentTypeRef[]>([])
+  useEffect(() => {
+    if (user) api<DocumentTypeRef[]>('/api/refs/document-types').then(setDocTypes)
+  }, [user])
+
   const groups = useMemo(() => {
     const result: Group[] = [
       {
         key: 'documents',
         label: 'Документы',
         icon: <DescriptionOutlinedIcon fontSize="small" />,
-        children: [
-          { to: '/memos', label: 'Служебные записки', also: ['/process'] },
-          // сюда добавятся заявки на договор и на оплату
-        ],
+        children: docTypes.length
+          ? docTypes.map((t, index) => ({
+              to: `/documents/${t.code}`,
+              label: t.name,
+              also: index === 0 ? ['/process'] : undefined,
+            }))
+          : [{ to: '/documents/MEMO', label: 'Служебные записки' }],
       },
     ]
     if (isAdmin) {
@@ -107,11 +118,15 @@ export function Layout() {
         key: 'directories',
         label: 'Справочники',
         icon: <FolderOutlinedIcon fontSize="small" />,
-        children: DIRECTORY_LEAVES,
+        children: [
+          ...DIRECTORY_LEAVES,
+          { to: '/admin/dictionaries', label: 'Пользовательские справочники' },
+        ],
       })
     }
     if (isAdmin || isMatrixEditor) {
       const children: Leaf[] = []
+      if (isAdmin) children.push({ to: '/admin/document-types', label: 'Виды документов' })
       if (isAdmin) children.push({ to: '/admin/users', label: 'Пользователи' })
       children.push({ to: '/admin/route-rules', label: 'Матрица согласования' })
       if (isAdmin) children.push({ to: '/admin/settings', label: 'Настройки BPM' })
@@ -123,7 +138,7 @@ export function Layout() {
       })
     }
     return result
-  }, [isAdmin, isMatrixEditor])
+  }, [isAdmin, isMatrixEditor, docTypes])
 
   const [open, setOpen] = useState<Record<string, boolean>>({ documents: true })
 

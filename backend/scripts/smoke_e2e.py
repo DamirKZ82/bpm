@@ -1,4 +1,4 @@
-"""Сквозной сценарий этапа 3 через TestClient (пишет в реальную БД bpm).
+"""Сквозной сценарий через TestClient (TRUNCATE + пишет в реальную БД bpm).
 
 Админ создаёт справочники и матрицу → инициатор подаёт служебную записку →
 юрист и директор согласуют → процесс APPROVED. Вторая служебка — отклонение.
@@ -16,9 +16,11 @@ from app.core.config import settings  # noqa: E402
 from app.main import app  # noqa: E402
 from scripts import seed_dev  # noqa: E402
 
-# Повторяемость: чистим данные и пересоздаём dev-админа
+# Повторяемость: чистим данные и пересоздаём dev-админа и системный вид
 _TABLES = (
-    "audit_log, tasks, process_instances, memos, contracts, counterparties, "
+    "audit_log, tasks, process_instances, attachments, documents, "
+    "document_type_fields, document_types, dictionary_items, dictionaries, "
+    "contracts, counterparties, "
     "integration_outbox, sync_log, external_mapping, route_rules, "
     "project_assignments, substitutions, absences, employments, users, "
     "employees, departments, projects, positions, organizations"
@@ -54,6 +56,8 @@ admin = login("admin")
 
 # --- Справочники ---
 org = post(admin, "/api/admin/organizations", {"name": "ТОО Демо-Строй", "bin": "123456789012"})
+project = post(admin, "/api/admin/projects", {"name": "ЖК Астана-Сити", "code": "P-01",
+                                              "organization_id": org["id"]})
 pos_lawyer = post(admin, "/api/admin/positions", {"name": "Юрист"})
 pos_director = post(admin, "/api/admin/positions", {"name": "Директор"})
 pos_engineer = post(admin, "/api/admin/positions", {"name": "Инженер ПТО"})
@@ -72,16 +76,16 @@ for emp, pos in [
         "position_id": pos["id"], "is_primary": True,
     })
 
-for username, emp, extra_roles in [
-    ("lawyer", emp_lawyer, []),
-    ("director", emp_director, []),
-    ("engineer", emp_engineer, []),
+for username, emp in [
+    ("lawyer", emp_lawyer),
+    ("director", emp_director),
+    ("engineer", emp_engineer),
 ]:
     post(admin, "/api/admin/users", {
         "username": username, "display_name": emp["full_name"],
-        "employee_id": emp["id"], "roles": ["INITIATOR", *extra_roles],
+        "employee_id": emp["id"], "roles": ["INITIATOR"],
     })
-check("Справочники: организация, 3 должности, 3 сотрудника, 3 пользователя", True)
+check("Справочники: организация, проект, 3 должности, 3 сотрудника, 3 пользователя", True)
 
 # --- Матрица: служебка = этап 1 Юрист, этап 2 Директор ---
 post(admin, "/api/admin/route-rules", {
@@ -96,12 +100,19 @@ post(admin, "/api/admin/route-rules", {
 })
 check("Матрица маршрутов: 2 этапа для MEMO", True)
 
+
+def new_doc(headers, subject, body):
+    return post(headers, "/api/documents", {
+        "type_code": "MEMO", "subject": subject, "body": body,
+        "organization_id": org["id"], "project_id": project["id"],
+    })
+
+
 # --- Сценарий 1: полное согласование ---
 engineer = login("engineer")
-memo = post(engineer, "/api/memos", {
-    "subject": "Закуп спецодежды", "body": "Прошу согласовать закуп 20 комплектов."
-})
-memo = post(engineer, f"/api/memos/{memo['id']}/submit", {})
+memo = new_doc(engineer, "Закуп спецодежды", "Прошу согласовать закуп 20 комплектов.")
+check("Номер присвоен автоматически", memo["number"].startswith("СЗ-"), memo["number"])
+memo = post(engineer, f"/api/documents/{memo['id']}/submit", {})
 process_id = memo["process"]["id"]
 check("Служебка подана, процесс запущен", memo["process"]["status"] == "IN_PROGRESS",
       memo["process"]["status"])
@@ -128,10 +139,8 @@ check("Аудит: старт, 2 визы, завершение",
       str(actions))
 
 # --- Сценарий 2: отклонение ---
-memo2 = post(engineer, "/api/memos", {
-    "subject": "Командировка", "body": "Прошу направить в командировку."
-})
-memo2 = post(engineer, f"/api/memos/{memo2['id']}/submit", {})
+memo2 = new_doc(engineer, "Командировка", "Прошу направить в командировку.")
+memo2 = post(engineer, f"/api/documents/{memo2['id']}/submit", {})
 tasks2 = client.get("/api/tasks/my", headers=lawyer).json()
 resp = client.post(f"/api/tasks/{tasks2[0]['id']}/reject", json={}, headers=lawyer)
 check("Отклонение без комментария запрещено", resp.status_code == 422)
@@ -147,7 +156,10 @@ resp = client.get(f"/api/processes/{process_id}", headers=login("director"))
 check("Согласующий видит карточку процесса", resp.status_code == 200)
 resp = client.post("/api/admin/organizations", json={"name": "x"}, headers=engineer)
 check("Не-админу закрыт админ-CRUD", resp.status_code == 403, str(resp.status_code))
-resp = client.post("/api/memos", json={"subject": "x", "body": "y"}, headers=admin)
+resp = client.post("/api/documents", json={
+    "type_code": "MEMO", "subject": "x", "body": "y",
+    "organization_id": org["id"], "project_id": project["id"],
+}, headers=admin)
 check("Несопоставленный пользователь не может создать заявку (ТЗ §3.5)",
       resp.status_code == 403, str(resp.status_code))
 

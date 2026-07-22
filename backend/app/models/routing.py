@@ -2,11 +2,11 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import ForeignKey, Index
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, UUIDPKMixin
-from app.models.enums import ObjectType, ResolverType, RuleMandatory, StageType
+from app.models.enums import ResolverType, RuleMandatory, StageType
 
 
 class ProjectAssignment(UUIDPKMixin, Base):
@@ -43,7 +43,7 @@ class RouteRule(UUIDPKMixin, Base):
         Index("ix_route_rules_context", "object_type", "organization_id", "project_id"),
     )
 
-    object_type: Mapped[ObjectType]
+    object_type: Mapped[str] = mapped_column(String(50))  # code вида документа
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organizations.id")
     )

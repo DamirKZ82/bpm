@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
-from app.models import Employee, Memo, ProcessInstance, Task, User
+from app.models import Document, Employee, ProcessInstance, Task, User
 from app.models.enums import TaskStatus
 from app.schemas.process import MyTaskRead, TaskAction, TaskRead
 from app.services import process_service
@@ -41,8 +41,9 @@ async def my_tasks(user: CurrentUser, session: SessionDep):
             if initiator_employee
             else initiator_user.display_name or initiator_user.ad_sam_account_name
         )
-        memo = await session.get(Memo, process.object_id)
-        item.subject = memo.subject if memo else None
+        document = await session.get(Document, process.object_id)
+        item.subject = document.subject if document else None
+        item.doc_number = document.number if document else None
         result.append(item)
     return result
 

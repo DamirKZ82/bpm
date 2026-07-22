@@ -19,8 +19,15 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
-import type { Process, RouteStageSnapshot, Task } from '../api/types'
+import type {
+  DocumentItem,
+  DocumentTypeRef,
+  Process,
+  RouteStageSnapshot,
+  Task,
+} from '../api/types'
 import { Attachments } from '../components/Attachments'
+import { CustomFieldValues, useRefsData } from '../components/CustomFields'
 import { ProcessStatusBadge, TaskStatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth'
 
@@ -69,7 +76,10 @@ const STAGE_TYPE_LABEL: Record<string, string> = {
 export function ProcessPage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const refs = useRefsData(true)
   const [process, setProcess] = useState<Process | null>(null)
+  const [documentItem, setDocumentItem] = useState<DocumentItem | null>(null)
+  const [docTypes, setDocTypes] = useState<DocumentTypeRef[]>([])
   const [tab, setTab] = useState(0)
   const [error, setError] = useState('')
   const [closeOpen, setCloseOpen] = useState(false)
@@ -77,11 +87,20 @@ export function ProcessPage() {
 
   const reload = useCallback(() => {
     api<Process>(`/api/processes/${id}`)
-      .then(setProcess)
+      .then((p) => {
+        setProcess(p)
+        api<DocumentItem>(`/api/documents/${p.object_id}`)
+          .then(setDocumentItem)
+          .catch(() => setDocumentItem(null))
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Ошибка'))
   }, [id])
 
   useEffect(reload, [reload])
+
+  useEffect(() => {
+    api<DocumentTypeRef[]>('/api/refs/document-types').then(setDocTypes)
+  }, [])
 
   if (error) return <Alert severity="error">{error}</Alert>
   if (!process) return null
@@ -191,11 +210,25 @@ export function ProcessPage() {
             </Typography>
           </Paper>
 
-          {process.object_type === 'MEMO' && (
-            <Paper sx={{ p: 2.5 }}>
-              <Attachments memoId={process.object_id} canEdit={false} />
-            </Paper>
-          )}
+          {(() => {
+            const typeFields =
+              docTypes.find((t) => t.code === process.object_type)?.fields ?? []
+            if (!documentItem || typeFields.length === 0) return null
+            return (
+              <Paper sx={{ p: 2.5, mb: 2 }}>
+                <Typography variant="h6" sx={{ mb: 1 }}>Реквизиты</Typography>
+                <CustomFieldValues
+                  fields={typeFields}
+                  values={documentItem.custom_fields}
+                  refs={refs}
+                />
+              </Paper>
+            )
+          })()}
+
+          <Paper sx={{ p: 2.5 }}>
+            <Attachments memoId={process.object_id} canEdit={false} />
+          </Paper>
         </>
       )}
 

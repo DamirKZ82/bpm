@@ -3,11 +3,11 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from app.models.enums import ObjectType, ResolverType, RuleMandatory, StageType
+from app.models.enums import ResolverType, RuleMandatory, StageType
 
 
 class RouteRuleCreate(BaseModel):
-    object_type: ObjectType
+    object_type: str  # code вида документа
     stage_no: int
     resolver_type: ResolverType
     priority: int
@@ -53,7 +53,7 @@ class RouteRuleRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    object_type: ObjectType
+    object_type: str
     stage_no: int
     order_in_stage: int
     resolver_type: ResolverType

@@ -1,6 +1,8 @@
 import { Navigate, useParams } from 'react-router-dom'
 import { CrudTable } from '../components/CrudTable'
 import type { EntityConfig } from '../components/CrudTable'
+import { DictionariesPage } from './Dictionaries'
+import { DocumentTypesPage } from './DocumentTypes'
 import { RouteMatrixPage } from './RouteMatrix'
 import { useAuth } from '../auth'
 
@@ -153,6 +155,14 @@ export function AdminPage() {
   if (entity === 'route-rules') {
     if (!isMatrixEditor) return <Navigate to="/tasks" replace />
     return <RouteMatrixPage />
+  }
+  if (entity === 'document-types') {
+    if (!isAdmin) return <Navigate to="/tasks" replace />
+    return <DocumentTypesPage />
+  }
+  if (entity === 'dictionaries') {
+    if (!isAdmin) return <Navigate to="/tasks" replace />
+    return <DictionariesPage />
   }
   if (!entity || !ENTITIES[entity]) return <Navigate to="/admin/organizations" replace />
   if (!isAdmin) return <Navigate to="/tasks" replace />

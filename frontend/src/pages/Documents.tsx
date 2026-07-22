@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link as RouterLink, useParams } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
@@ -21,8 +21,9 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
-import type { Memo, OrganizationRef, ProjectRef } from '../api/types'
+import type { DocumentItem, DocumentTypeRef } from '../api/types'
 import { Attachments } from '../components/Attachments'
+import { CustomFieldInputs, useRefsData } from '../components/CustomFields'
 import { EMPTY_PERIOD, PeriodPicker } from '../components/PeriodPicker'
 import type { Period } from '../components/PeriodPicker'
 import { ProcessStatusBadge } from '../components/StatusBadge'
@@ -38,12 +39,13 @@ function today(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-export function MemosPage() {
+export function DocumentsPage() {
+  const { typeCode = 'MEMO' } = useParams()
   const { user } = useAuth()
-  const [memos, setMemos] = useState<Memo[] | null>(null)
-  const [organizations, setOrganizations] = useState<OrganizationRef[]>([])
-  const [projects, setProjects] = useState<ProjectRef[]>([])
-  const [editing, setEditing] = useState<Partial<Memo> | null>(null)
+  const refs = useRefsData(true)
+  const [docTypes, setDocTypes] = useState<DocumentTypeRef[]>([])
+  const [documents, setDocuments] = useState<DocumentItem[] | null>(null)
+  const [editing, setEditing] = useState<Partial<DocumentItem> | null>(null)
   const [error, setError] = useState('')
   const [listError, setListError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -53,21 +55,27 @@ export function MemosPage() {
   const [filterProject, setFilterProject] = useState('')
   const [period, setPeriod] = useState<Period>(EMPTY_PERIOD)
 
+  const docType = useMemo(
+    () => docTypes.find((t) => t.code === typeCode) ?? null,
+    [docTypes, typeCode],
+  )
+
   const reload = useCallback(() => {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams({ type_code: typeCode })
     if (filterOrg) params.set('organization_id', filterOrg)
     if (filterProject) params.set('project_id', filterProject)
     if (period.from) params.set('date_from', period.from)
     if (period.to) params.set('date_to', period.to)
-    const query = params.toString()
-    api<Memo[]>(`/api/memos${query ? `?${query}` : ''}`).then(setMemos)
-  }, [filterOrg, filterProject, period])
-
-  useEffect(reload, [reload])
+    api<DocumentItem[]>(`/api/documents?${params}`).then(setDocuments)
+  }, [typeCode, filterOrg, filterProject, period])
 
   useEffect(() => {
-    api<OrganizationRef[]>('/api/refs/organizations').then(setOrganizations)
-    api<ProjectRef[]>('/api/refs/projects').then(setProjects)
+    setDocuments(null)
+    reload()
+  }, [reload])
+
+  useEffect(() => {
+    api<DocumentTypeRef[]>('/api/refs/document-types').then(setDocTypes)
   }, [])
 
   const hasFilters =
@@ -84,13 +92,17 @@ export function MemosPage() {
         date: editing.date ?? today(),
         organization_id: editing.organization_id,
         project_id: editing.project_id,
+        custom_fields: editing.custom_fields ?? {},
       }
       if (editing.id) {
-        await api(`/api/memos/${editing.id}`, { method: 'PATCH', body })
+        await api(`/api/documents/${editing.id}`, { method: 'PATCH', body })
         setEditing(null)
       } else {
         // после создания диалог остаётся открытым — можно добавить вложения
-        const saved = await api<Memo>('/api/memos', { method: 'POST', body })
+        const saved = await api<DocumentItem>('/api/documents', {
+          method: 'POST',
+          body: { ...body, type_code: typeCode },
+        })
         setEditing(saved)
       }
       reload()
@@ -101,43 +113,44 @@ export function MemosPage() {
     }
   }
 
-  const submitForApproval = async (memo: Memo) => {
+  const submitForApproval = async (document: DocumentItem) => {
     setListError('')
     try {
-      await api(`/api/memos/${memo.id}/submit`, { method: 'POST', body: {} })
+      await api(`/api/documents/${document.id}/submit`, { method: 'POST', body: {} })
       reload()
     } catch (err) {
       setListError(err instanceof ApiError ? err.message : 'Ошибка')
     }
   }
 
-  const remove = async (memo: Memo) => {
-    if (!confirm(`Удалить черновик «${memo.subject}»?`)) return
+  const remove = async (document: DocumentItem) => {
+    if (!confirm(`Удалить черновик «${document.subject}»?`)) return
     setListError('')
     try {
-      await api(`/api/memos/${memo.id}`, { method: 'DELETE' })
+      await api(`/api/documents/${document.id}`, { method: 'DELETE' })
       reload()
     } catch (err) {
       setListError(err instanceof ApiError ? err.message : 'Ошибка')
     }
   }
 
-  if (memos === null) return null
+  if (documents === null) return null
 
   const isAdmin = user?.roles.includes('ADMIN') ?? false
   const canCreate = user?.employee_id != null
-  const isMine = (memo: Memo) => memo.author_id === user?.id
-  const isEditable = (memo: Memo) =>
-    !memo.process ||
-    ['REJECTED', 'CANCELLED', 'FORCE_CLOSED'].includes(memo.process.status)
+  const isMine = (document: DocumentItem) => document.author_id === user?.id
+  const isEditable = (document: DocumentItem) =>
+    !document.process ||
+    ['REJECTED', 'CANCELLED', 'FORCE_CLOSED'].includes(document.process.status)
 
   const readOnly = Boolean(editing?.id) && editing?.author_id !== user?.id
-  const projectOptions = projects.filter(
+  const projectOptions = refs.projects.filter(
     (p) =>
       !editing?.organization_id ||
       p.organization_id === null ||
       p.organization_id === editing.organization_id,
   )
+  const typeName = docType?.name ?? 'Документы'
 
   return (
     <>
@@ -146,7 +159,12 @@ export function MemosPage() {
         sx={{ mb: 2, justifyContent: 'space-between', alignItems: 'center' }}
       >
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          {isAdmin ? 'Служебные записки (все)' : 'Мои служебные записки'}
+          {typeName}
+          {isAdmin && (
+            <Typography component="span" color="text.secondary" sx={{ ml: 1 }}>
+              (все)
+            </Typography>
+          )}
         </Typography>
         <Button
           variant="contained"
@@ -155,12 +173,14 @@ export function MemosPage() {
           onClick={() => {
             setEditing({
               date: today(),
-              organization_id: organizations.length === 1 ? organizations[0].id : null,
+              organization_id:
+                refs.organizations.length === 1 ? refs.organizations[0].id : null,
+              custom_fields: {},
             })
             setError('')
           }}
         >
-          Новая записка
+          Создать
         </Button>
       </Stack>
       {!canCreate && (
@@ -182,7 +202,7 @@ export function MemosPage() {
             sx={{ width: 230, flexShrink: 0 }}
           >
             <MenuItem value="">Все</MenuItem>
-            {organizations.map((org) => (
+            {refs.organizations.map((org) => (
               <MenuItem key={org.id} value={org.id}>{org.name}</MenuItem>
             ))}
           </TextField>
@@ -194,7 +214,7 @@ export function MemosPage() {
             sx={{ width: 230, flexShrink: 0 }}
           >
             <MenuItem value="">Все</MenuItem>
-            {projects
+            {refs.projects
               .filter(
                 (p) =>
                   !filterOrg ||
@@ -223,9 +243,9 @@ export function MemosPage() {
       </Paper>
 
       <Paper>
-        {memos.length === 0 ? (
+        {documents.length === 0 ? (
           <Typography color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>
-            {hasFilters ? 'По заданному отбору ничего не найдено' : 'Записок пока нет'}
+            {hasFilters ? 'По заданному отбору ничего не найдено' : 'Документов пока нет'}
           </Typography>
         ) : (
           <Table size="small">
@@ -241,59 +261,59 @@ export function MemosPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {memos.map((memo) => (
-                <TableRow key={memo.id} hover>
-                  <TableCell>{memo.number}</TableCell>
+              {documents.map((document) => (
+                <TableRow key={document.id} hover>
+                  <TableCell>{document.number}</TableCell>
                   <TableCell>
-                    {memo.process ? (
-                      <Link component={RouterLink} to={`/process/${memo.process.id}`}>
-                        {memo.subject}
+                    {document.process ? (
+                      <Link component={RouterLink} to={`/process/${document.process.id}`}>
+                        {document.subject}
                       </Link>
-                    ) : isMine(memo) ? (
-                      memo.subject
+                    ) : isMine(document) ? (
+                      document.subject
                     ) : (
                       <Link
                         component="button"
-                        onClick={() => { setEditing(memo); setError('') }}
+                        onClick={() => { setEditing(document); setError('') }}
                       >
-                        {memo.subject}
+                        {document.subject}
                       </Link>
                     )}
                   </TableCell>
                   {isAdmin && (
-                    <TableCell>{memo.author_name ?? '—'}</TableCell>
+                    <TableCell>{document.author_name ?? '—'}</TableCell>
                   )}
-                  <TableCell>{formatDate(memo.date)}</TableCell>
-                  <TableCell>{memo.project_name ?? '—'}</TableCell>
+                  <TableCell>{formatDate(document.date)}</TableCell>
+                  <TableCell>{document.project_name ?? '—'}</TableCell>
                   <TableCell>
-                    {memo.process ? (
-                      <ProcessStatusBadge status={memo.process.status} />
+                    {document.process ? (
+                      <ProcessStatusBadge status={document.process.status} />
                     ) : (
                       <Chip label="Черновик" size="small" variant="outlined" />
                     )}
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
-                      {isMine(memo) && isEditable(memo) && (
+                      {isMine(document) && isEditable(document) && (
                         <>
                           <Button
                             size="small"
                             variant="contained"
-                            onClick={() => submitForApproval(memo)}
+                            onClick={() => submitForApproval(document)}
                           >
-                            {memo.process ? 'Отправить повторно' : 'На согласование'}
+                            {document.process ? 'Отправить повторно' : 'На согласование'}
                           </Button>
                           <Button
                             size="small"
                             variant="outlined"
-                            onClick={() => { setEditing(memo); setError('') }}
+                            onClick={() => { setEditing(document); setError('') }}
                           >
                             Изменить
                           </Button>
                         </>
                       )}
-                      {isMine(memo) && !memo.process && (
-                        <Button size="small" variant="outlined" onClick={() => remove(memo)}>
+                      {isMine(document) && !document.process && (
+                        <Button size="small" variant="outlined" onClick={() => remove(document)}>
                           Удалить
                         </Button>
                       )}
@@ -309,10 +329,10 @@ export function MemosPage() {
       <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="md">
         <DialogTitle>
           {!editing?.id
-            ? 'Новая служебная записка'
+            ? `${typeName} — новый документ`
             : readOnly
               ? `${editing.number} — ${editing.author_name ?? 'другой автор'}`
-              : `Служебная записка ${editing.number}`}
+              : `${typeName} ${editing.number}`}
         </DialogTitle>
         <DialogContent>
           {/* реквизиты шапки — в один ряд */}
@@ -348,7 +368,7 @@ export function MemosPage() {
               }
               disabled={readOnly}
             >
-              {organizations.map((org) => (
+              {refs.organizations.map((org) => (
                 <MenuItem key={org.id} value={org.id}>{org.name}</MenuItem>
               ))}
             </TextField>
@@ -379,11 +399,23 @@ export function MemosPage() {
           <TextField
             label="Содержание"
             multiline
-            minRows={5}
+            minRows={4}
             value={editing?.body ?? ''}
             onChange={(e) => setEditing({ ...editing, body: e.target.value })}
             disabled={readOnly}
           />
+          {(docType?.fields.length ?? 0) > 0 && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <CustomFieldInputs
+                fields={docType?.fields ?? []}
+                values={(editing?.custom_fields ?? {}) as Record<string, unknown>}
+                onChange={(values) => setEditing({ ...editing, custom_fields: values })}
+                disabled={readOnly}
+                refs={refs}
+              />
+            </>
+          )}
           {!readOnly && (
             <>
               <Divider sx={{ my: 2 }} />
@@ -391,7 +423,7 @@ export function MemosPage() {
                 Маршрут согласования
               </Typography>
               <RoutePreview
-                objectType="MEMO"
+                objectType={typeCode}
                 organizationId={editing?.organization_id}
                 projectId={editing?.project_id}
               />

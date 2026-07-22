@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, ProcessInstance, Task, User
 from app.models.enums import (
-    ObjectType,
     ProcessStatus,
     StageType,
     TaskResult,
@@ -55,7 +54,7 @@ async def _audit(
 async def start_process(
     session: AsyncSession,
     *,
-    object_type: ObjectType,
+    object_type: str,
     object_id: uuid.UUID,
     initiator: User,
     organization_id: uuid.UUID,
@@ -112,7 +111,7 @@ async def start_process(
         process_id=process.id,
         action="PROCESS_STARTED",
         user_id=initiator.id,
-        payload={"object_type": object_type.value, "object_id": str(object_id)},
+        payload={"object_type": object_type, "object_id": str(object_id)},
         ip=ip,
     )
 

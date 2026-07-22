@@ -22,8 +22,9 @@ export interface ProcessBrief {
   completed_at: string | null
 }
 
-export interface Memo {
+export interface DocumentItem {
   id: string
+  type_code: string
   number: string
   date: string
   organization_id: string | null
@@ -32,11 +33,43 @@ export interface Memo {
   project_name: string | null
   subject: string
   body: string
+  custom_fields: Record<string, unknown>
   department_id: string | null
   author_id: string | null
   author_name: string | null
   created_at: string
   process: ProcessBrief | null
+}
+
+export interface TypeField {
+  id: string
+  code: string
+  name: string
+  field_type: string
+  ref_target: string | null
+  dictionary_id: string | null
+  required: boolean
+  sort_order: number
+}
+
+export interface DocumentTypeRef {
+  id: string
+  code: string
+  name: string
+  prefix: string
+  is_system: boolean
+  fields: TypeField[]
+}
+
+export interface EmployeeRef {
+  id: string
+  full_name: string
+}
+
+export interface DictionaryRef {
+  id: string
+  name: string
+  items: { id: string; name: string }[]
 }
 
 export interface OrganizationRef {
@@ -78,6 +111,7 @@ export interface Task {
 export interface MyTask extends Task {
   object_type: string | null
   subject: string | null
+  doc_number: string | null
   initiator_name: string | null
   process_started_at: string | null
 }

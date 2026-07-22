@@ -1,0 +1,18 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.env
+
+# Локальное хранилище файлов
+backend/storage/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

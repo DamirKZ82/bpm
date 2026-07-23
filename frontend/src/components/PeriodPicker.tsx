@@ -108,7 +108,7 @@ export function PeriodPicker({
 }: {
   value: Period
   onChange: (period: Period) => void
-  width?: number
+  width?: number | string
 }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Period>(value)
@@ -134,7 +134,7 @@ export function PeriodPicker({
         label="Период"
         value={periodLabel(value)}
         onClick={openDialog}
-        sx={{ width, flexShrink: 0 }}
+        sx={{ width }}
         slotProps={{
           input: {
             readOnly: true,

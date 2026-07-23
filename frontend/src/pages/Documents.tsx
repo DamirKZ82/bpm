@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
@@ -205,15 +206,22 @@ export function DocumentsPage() {
       )}
       {listError && <Alert severity="error" sx={{ mb: 2 }}>{listError}</Alert>}
 
-      {/* панель отбора */}
+      {/* панель отбора: выровненная сетка, 1-5 колонок по ширине окна */}
       <Paper sx={{ p: 1.5, mb: 2 }}>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            alignItems: 'center',
+            gridTemplateColumns:
+              'repeat(auto-fill, minmax(max(210px, calc(20% - 12px)), 1fr))',
+          }}
+        >
           <TextField
             select
             label="Организация"
             value={filterOrg}
             onChange={(e) => { setFilterOrg(e.target.value); setFilterProject('') }}
-            sx={{ width: 230, flexShrink: 0 }}
           >
             <MenuItem value="">Все</MenuItem>
             {refs.organizations.map((org) => (
@@ -225,7 +233,6 @@ export function DocumentsPage() {
             label="Проект"
             value={filterProject}
             onChange={(e) => setFilterProject(e.target.value)}
-            sx={{ width: 230, flexShrink: 0 }}
           >
             <MenuItem value="">Все</MenuItem>
             {refs.projects
@@ -241,7 +248,7 @@ export function DocumentsPage() {
                 </MenuItem>
               ))}
           </TextField>
-          <PeriodPicker value={period} onChange={setPeriod} />
+          <PeriodPicker value={period} onChange={setPeriod} width="100%" />
           {/* отборы по настраиваемым полям вида */}
           {(docType?.fields ?? [])
             .filter((f) => f.field_type !== 'TEXT')
@@ -255,7 +262,6 @@ export function DocumentsPage() {
                       label={field.name}
                       value={cfFilters[field.code] ?? ''}
                       onChange={(e) => setCf(field.code, e.target.value)}
-                      sx={{ width: 150, flexShrink: 0 }}
                     >
                       <MenuItem value="">Все</MenuItem>
                       <MenuItem value="true">Да</MenuItem>
@@ -270,7 +276,6 @@ export function DocumentsPage() {
                       label={field.name}
                       value={cfFilters[field.code] ?? ''}
                       onChange={(e) => setCf(field.code, e.target.value)}
-                      sx={{ width: 210, flexShrink: 0 }}
                     >
                       <MenuItem value="">Все</MenuItem>
                       {refOptions(field, refs).map((option) => (
@@ -282,13 +287,13 @@ export function DocumentsPage() {
                   )
                 case 'DATE':
                   return (
-                    <Stack direction="row" spacing={1} key={field.id} sx={{ flexShrink: 0 }}>
+                    <Stack direction="row" spacing={1} key={field.id}>
                       <TextField
                         type="date"
                         label={`${field.name} с`}
                         value={cfFilters[`${field.code}_from`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_from`, e.target.value)}
-                        sx={{ width: 165 }}
+                        sx={{ flex: 1 }}
                         slotProps={{ inputLabel: { shrink: true } }}
                       />
                       <TextField
@@ -296,7 +301,7 @@ export function DocumentsPage() {
                         label="по"
                         value={cfFilters[`${field.code}_to`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_to`, e.target.value)}
-                        sx={{ width: 165 }}
+                        sx={{ flex: 1 }}
                         slotProps={{ inputLabel: { shrink: true } }}
                       />
                     </Stack>
@@ -304,20 +309,20 @@ export function DocumentsPage() {
                 case 'NUMBER':
                 case 'MONEY':
                   return (
-                    <Stack direction="row" spacing={1} key={field.id} sx={{ flexShrink: 0 }}>
+                    <Stack direction="row" spacing={1} key={field.id}>
                       <TextField
                         type="number"
                         label={`${field.name} от`}
                         value={cfFilters[`${field.code}_from`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_from`, e.target.value)}
-                        sx={{ width: 140 }}
+                        sx={{ flex: 1 }}
                       />
                       <TextField
                         type="number"
                         label="до"
                         value={cfFilters[`${field.code}_to`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_to`, e.target.value)}
-                        sx={{ width: 120 }}
+                        sx={{ flex: 1 }}
                       />
                     </Stack>
                   )
@@ -328,13 +333,13 @@ export function DocumentsPage() {
                       label={field.name}
                       value={cfFilters[field.code] ?? ''}
                       onChange={(e) => setCf(field.code, e.target.value)}
-                      sx={{ width: 200, flexShrink: 0 }}
                     />
                   )
               }
             })}
           {hasFilters && (
             <Button
+              sx={{ justifySelf: 'start' }}
               onClick={() => {
                 setFilterOrg('')
                 setFilterProject('')
@@ -345,7 +350,7 @@ export function DocumentsPage() {
               Сбросить
             </Button>
           )}
-        </Stack>
+        </Box>
       </Paper>
 
       <Paper>

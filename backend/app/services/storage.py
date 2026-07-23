@@ -68,6 +68,7 @@ class Storage(Protocol):
     def save(self, key: str, data: bytes) -> None: ...
     def load(self, key: str) -> bytes: ...
     def delete(self, key: str) -> None: ...
+    def presigned_url(self, key: str, filename: str) -> str | None: ...
 
 
 class LocalStorage:
@@ -94,6 +95,11 @@ class LocalStorage:
     def delete(self, key: str) -> None:
         self._path(key).unlink(missing_ok=True)
 
+    def presigned_url(self, key: str, filename: str) -> str | None:
+        # локальные файлы доступны только через авторизованный download
+        # внутри сети — прямой публичной ссылки нет
+        return None
+
 
 class S3Storage:
     def __init__(self, config: StorageConfig):
@@ -119,6 +125,22 @@ class S3Storage:
 
     def delete(self, key: str) -> None:
         self.client.delete_object(Bucket=self.bucket, Key=key)
+
+    def presigned_url(self, key: str, filename: str) -> str | None:
+        # временная прямая ссылка на файл (7 дней) — работает из любой сети,
+        # включая телефон вне корп-контура
+        try:
+            return self.client.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": self.bucket,
+                    "Key": key,
+                    "ResponseContentDisposition": f'attachment; filename="{filename}"',
+                },
+                ExpiresIn=7 * 24 * 3600,
+            )
+        except Exception:  # noqa: BLE001
+            return None
 
 
 # кэш по конфигурации: боto3-клиент не пересоздаётся на каждый запрос

@@ -46,17 +46,70 @@ async def _document_label(session: AsyncSession, process: ProcessInstance) -> st
     return f"{document.number} «{document.subject}»"
 
 
+async def _document_summary(
+    session: AsyncSession, process: ProcessInstance, document
+) -> str:
+    """Развёрнутый текст для email/Telegram: реквизиты, содержание,
+    вложения (для S3 — прямые ссылки на файлы)."""
+    from app.models import Attachment, Organization, Project
+    from app.services.storage import get_storage
+
+    if document is None:
+        return ""
+    parts: list[str] = []
+
+    org = await session.scalar(
+        select(Organization.name).where(Organization.id == process.organization_id)
+    )
+    proj = (
+        await session.scalar(
+            select(Project.name).where(Project.id == process.project_id)
+        )
+        if process.project_id
+        else None
+    )
+    header = []
+    if org:
+        header.append(f"Организация: {org}")
+    if proj:
+        header.append(f"Проект: {proj}")
+    if header:
+        parts.append(" · ".join(header))
+
+    body = (document.body or "").strip()
+    if body:
+        parts.append(body[:600] + ("…" if len(body) > 600 else ""))
+
+    attachments = list(
+        await session.scalars(
+            select(Attachment).where(Attachment.object_id == document.id)
+        )
+    )
+    if attachments:
+        storage = await get_storage(session)
+        lines = ["Вложения:"]
+        for att in attachments:
+            url = storage.presigned_url(att.storage_key, att.filename)
+            lines.append(f"• {att.filename}: {url}" if url else f"• {att.filename}")
+        parts.append("\n".join(lines))
+
+    return "\n\n".join(parts)
+
+
 async def _notify_users(
     session: AsyncSession,
     user_ids: list[uuid.UUID],
     *,
     title: str,
     body: str | None = None,
+    external_body: str | None = None,
     link: str | None = None,
     exclude: uuid.UUID | None = None,
     action_task_by_employee: dict[uuid.UUID, uuid.UUID] | None = None,
 ) -> None:
-    """In-app уведомление + постановка в очередь email/Telegram."""
+    """In-app уведомление + постановка в очередь email/Telegram.
+    external_body — расширенный текст для внешних каналов (с содержанием
+    и вложениями); in-app остаётся кратким (body)."""
     from app.services.notify_delivery import enqueue_for_user
 
     ids = {u for u in user_ids if u != exclude}
@@ -70,7 +123,8 @@ async def _notify_users(
             action_task_id = action_task_by_employee.get(user.employee_id)
         enqueue_for_user(
             session, user,
-            title=title, body=body, link=link, action_task_id=action_task_id,
+            title=title, body=body, external_body=external_body,
+            link=link, action_task_id=action_task_id,
         )
 
 
@@ -91,10 +145,14 @@ async def _notify_assignees(
     task_by_employee: dict[uuid.UUID, uuid.UUID] = {}
     for task in tasks:
         task_by_employee.setdefault(task.assignee_id, task.id)
+    document = await session.get(Document, process.object_id)
+    preview = (document.body or "").strip()[:200] if document else None
     await _notify_users(
         session,
         user_ids,
         title=f"Вам на согласование: {await _document_label(session, process)}",
+        body=preview or None,
+        external_body=await _document_summary(session, process, document) or None,
         link=f"/process/{process.id}",
         action_task_by_employee=task_by_employee,
     )

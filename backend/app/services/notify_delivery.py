@@ -39,19 +39,27 @@ def enqueue_for_user(
     title: str,
     body: str | None,
     link: str | None,
+    external_body: str | None = None,
     action_task_id: uuid.UUID | None = None,
 ) -> None:
-    """Ставит сообщение в очередь по всем доступным каналам пользователя."""
-    text_body = title + (f"\n\n{body}" if body else "")
+    """Ставит сообщение в очередь по всем доступным каналам пользователя.
+    Во внешние каналы уходит расширенный текст (содержание, вложения)
+    и прямая ссылка на документ."""
+    content = external_body if external_body is not None else body
+    text_body = title + (f"\n\n{content}" if content else "")
+    full_link = f"{settings.app_base_url}{link}" if link else None
     if user.email and settings.smtp_host:
         email_body = text_body
-        if link:
-            email_body += f"\n\nОткрыть в системе: {settings.app_base_url}{link}"
+        if full_link:
+            email_body += f"\n\nОткрыть документ: {full_link}"
         session.add(OutboundMessage(
             channel="EMAIL", recipient=user.email,
             subject=title, body=email_body,
         ))
     if user.telegram_chat_id and settings.telegram_bot_token:
+        tg_body = text_body
+        if full_link:
+            tg_body += f"\n\nОткрыть документ: {full_link}"
         buttons = None
         if action_task_id is not None:
             buttons = [
@@ -60,7 +68,7 @@ def enqueue_for_user(
             ]
         session.add(OutboundMessage(
             channel="TELEGRAM", recipient=str(user.telegram_chat_id),
-            subject=None, body=text_body, buttons=buttons,
+            subject=None, body=tg_body, buttons=buttons,
         ))
 
 

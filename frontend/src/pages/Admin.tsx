@@ -3,6 +3,7 @@ import { CrudTable } from '../components/CrudTable'
 import type { EntityConfig } from '../components/CrudTable'
 import { AuditPage } from './Audit'
 import { DictionariesPage } from './Dictionaries'
+import { ErrorsPage } from './Errors'
 import { DocumentTypesPage } from './DocumentTypes'
 import { OverduePage } from './Overdue'
 import { RouteMatrixPage } from './RouteMatrix'
@@ -173,6 +174,10 @@ export function AdminPage() {
   if (entity === 'audit') {
     if (!isAdmin) return <Navigate to="/tasks" replace />
     return <AuditPage />
+  }
+  if (entity === 'errors') {
+    if (!isAdmin) return <Navigate to="/tasks" replace />
+    return <ErrorsPage />
   }
   if (!entity || !ENTITIES[entity]) return <Navigate to="/admin/organizations" replace />
   if (!isAdmin) return <Navigate to="/tasks" replace />

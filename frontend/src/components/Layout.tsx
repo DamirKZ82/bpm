@@ -154,6 +154,7 @@ export function Layout() {
       children.push({ to: '/admin/route-rules', label: 'Матрица согласования' })
       if (isAdmin) children.push({ to: '/admin/overdue', label: 'Просроченные задачи' })
       if (isAdmin) children.push({ to: '/admin/audit', label: 'Журнал аудита' })
+      if (isAdmin) children.push({ to: '/admin/errors', label: 'Ошибки' })
       if (isAdmin) children.push({ to: '/admin/settings', label: 'Настройки BPM' })
       result.push({
         key: 'administration',

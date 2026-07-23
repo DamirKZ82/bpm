@@ -16,6 +16,7 @@ from app.models.document_types import (
     DocumentTypeField,
 )
 from app.models.domain import Attachment, Contract, Counterparty, Document
+from app.models.error_log import ErrorLog
 from app.models.integration import ExternalMapping, IntegrationOutbox, SyncLog
 from app.models.notification import Notification, ProcessComment
 from app.models.process import AuditLog, ProcessInstance, Task
@@ -38,6 +39,7 @@ __all__ = [
     "DocumentTypeField",
     "Employee",
     "Employment",
+    "ErrorLog",
     "ExternalMapping",
     "IntegrationOutbox",
     "Notification",

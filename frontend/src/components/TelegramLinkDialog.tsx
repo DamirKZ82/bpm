@@ -96,7 +96,7 @@ export function TelegramLinkDialog() {
               </Typography>
               <Typography
                 sx={{
-                  fontFamily: 'monospace', p: 1, bgcolor: '#f4f6f9',
+                  fontFamily: 'monospace', p: 1, bgcolor: '#f1e9d6',
                   borderRadius: 1, textAlign: 'center',
                 }}
               >

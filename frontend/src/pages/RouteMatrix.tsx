@@ -394,7 +394,7 @@ export function RouteMatrixPage() {
 
               {/* этапы */}
               {editing.stages.map((stage, stageIndex) => (
-                <Paper key={stageIndex} sx={{ p: 2, mb: 2, bgcolor: '#fafbfd' }}>
+                <Paper key={stageIndex} sx={{ p: 2, mb: 2, bgcolor: '#f1e9d6' }}>
                   <Stack
                     direction="row"
                     spacing={2}

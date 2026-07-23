@@ -210,7 +210,7 @@ export function Layout() {
             width,
             overflowX: 'hidden',
             transition: 'width 0.2s',
-            bgcolor: '#fbfcfe',
+            bgcolor: '#f1e9d6',
             borderRight: '1px solid',
             borderColor: 'divider',
           },

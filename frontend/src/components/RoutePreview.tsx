@@ -75,7 +75,7 @@ export function RoutePreview({
               sx={{
                 p: 1.5,
                 minWidth: 180,
-                bgcolor: '#fafbfd',
+                bgcolor: '#f1e9d6',
                 height: '100%',
               }}
             >

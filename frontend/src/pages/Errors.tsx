@@ -190,7 +190,7 @@ export function ErrorsPage() {
               component="pre"
               sx={{
                 p: 1.5,
-                bgcolor: '#f4f6f9',
+                bgcolor: '#f1e9d6',
                 borderRadius: 2,
                 fontSize: 12,
                 overflowX: 'auto',

@@ -360,7 +360,7 @@ export function ProcessPage() {
                   sx={{
                     p: 1.5,
                     borderRadius: 2,
-                    bgcolor: comment.user_id === user?.id ? 'primary.light' : '#f4f6f9',
+                    bgcolor: comment.user_id === user?.id ? 'primary.light' : '#f1e9d6',
                   }}
                 >
                   <Stack

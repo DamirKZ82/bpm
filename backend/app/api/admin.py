@@ -857,6 +857,67 @@ async def update_user(user_id: uuid.UUID, payload: UserUpdate, session: SessionD
 router.include_router(users_router)
 
 
+# --- Просроченные задачи (эскалация, ТЗ §6.4) ---
+
+class OverdueTaskRead(BaseModel):
+    task_id: uuid.UUID
+    process_id: uuid.UUID
+    doc_number: str | None
+    subject: str | None
+    stage_no: int
+    position_name: str | None
+    assignee_name: str | None
+    initiator_name: str | None
+    due_at: object
+    overdue_hours: int
+
+
+@router.get(
+    "/overdue-tasks",
+    response_model=list[OverdueTaskRead],
+    dependencies=[Depends(require_roles())],
+)
+async def overdue_tasks(session: SessionDep):
+    from app.models import Document, Employee, Position, ProcessInstance, Task
+    from app.models.enums import TaskStatus
+    from app.services.process_service import utcnow
+
+    now = utcnow()
+    rows = (
+        await session.execute(
+            select(Task, ProcessInstance, Document, Employee, Position, User)
+            .join(ProcessInstance, Task.process_id == ProcessInstance.id)
+            .outerjoin(Document, ProcessInstance.object_id == Document.id)
+            .outerjoin(Employee, Task.assignee_id == Employee.id)
+            .outerjoin(Position, Task.position_id == Position.id)
+            .outerjoin(User, ProcessInstance.initiator_id == User.id)
+            .where(
+                Task.status == TaskStatus.ACTIVE,
+                Task.due_at.is_not(None),
+                Task.due_at < now,
+            )
+            .order_by(Task.due_at)
+        )
+    ).all()
+    return [
+        OverdueTaskRead(
+            task_id=task.id,
+            process_id=process.id,
+            doc_number=document.number if document else None,
+            subject=document.subject if document else None,
+            stage_no=task.stage_no,
+            position_name=position.name if position else None,
+            assignee_name=employee.full_name if employee else None,
+            initiator_name=(
+                initiator.display_name or initiator.ad_sam_account_name
+            ) if initiator else None,
+            due_at=task.due_at,
+            overdue_hours=int((now - task.due_at).total_seconds() // 3600),
+        )
+        for task, process, document, employee, position, initiator in rows
+    ]
+
+
 @router.get("/settings-info", dependencies=[Depends(require_roles())])
 async def settings_info():
     """Информация о конфигурации для страницы «Настройки BPM»."""

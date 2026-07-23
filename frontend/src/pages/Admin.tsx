@@ -3,6 +3,7 @@ import { CrudTable } from '../components/CrudTable'
 import type { EntityConfig } from '../components/CrudTable'
 import { DictionariesPage } from './Dictionaries'
 import { DocumentTypesPage } from './DocumentTypes'
+import { OverduePage } from './Overdue'
 import { RouteMatrixPage } from './RouteMatrix'
 import { useAuth } from '../auth'
 
@@ -163,6 +164,10 @@ export function AdminPage() {
   if (entity === 'dictionaries') {
     if (!isAdmin) return <Navigate to="/tasks" replace />
     return <DictionariesPage />
+  }
+  if (entity === 'overdue') {
+    if (!isAdmin) return <Navigate to="/tasks" replace />
+    return <OverduePage />
   }
   if (!entity || !ENTITIES[entity]) return <Navigate to="/admin/organizations" replace />
   if (!isAdmin) return <Navigate to="/tasks" replace />

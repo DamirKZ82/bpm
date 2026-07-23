@@ -98,7 +98,19 @@ export function TasksPage() {
                   </TableCell>
                   <TableCell>{task.initiator_name ?? '—'}</TableCell>
                   <TableCell>{formatDate(task.process_started_at)}</TableCell>
-                  <TableCell>{formatDate(task.due_at)}</TableCell>
+                  <TableCell
+                    sx={
+                      task.due_at !== null &&
+                      new Date(task.due_at + 'Z').getTime() < Date.now()
+                        ? { color: 'error.main', fontWeight: 600 }
+                        : undefined
+                    }
+                  >
+                    {formatDate(task.due_at)}
+                    {task.due_at !== null &&
+                      new Date(task.due_at + 'Z').getTime() < Date.now() &&
+                      ' · просрочено'}
+                  </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
                       <Button

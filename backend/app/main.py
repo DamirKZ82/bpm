@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from app.api import admin, auth, documents, processes, tasks
+from app.api import admin, auth, documents, notifications, processes, tasks
 from app.api.routes import router
 from app.core.config import settings
 
@@ -30,3 +30,4 @@ app.include_router(documents.router)
 app.include_router(documents.attachments_router)
 app.include_router(tasks.router)
 app.include_router(processes.router)
+app.include_router(notifications.router)

@@ -13,11 +13,13 @@ import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
+import Badge from '@mui/material/Badge'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined'
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MenuIcon from '@mui/icons-material/Menu'
 import TaskAltIcon from '@mui/icons-material/TaskAlt'
@@ -26,6 +28,13 @@ import { api } from '../api/client'
 import type { DocumentTypeRef } from '../api/types'
 import { useAuth } from '../auth'
 import { Logo } from './Logo'
+import { NotificationsBell } from './NotificationsBell'
+
+export interface Counters {
+  active_tasks: number
+  overdue_tasks: number
+  unread_notifications: number
+}
 
 const WIDTH_OPEN = 278
 const WIDTH_COLLAPSED = 68
@@ -98,6 +107,20 @@ export function Layout() {
     if (user) api<DocumentTypeRef[]>('/api/refs/document-types').then(setDocTypes)
   }, [user])
 
+  // счётчики для колокольчика и бейджа задач (обновление раз в 30 сек)
+  const [counters, setCounters] = useState<Counters>({
+    active_tasks: 0, overdue_tasks: 0, unread_notifications: 0,
+  })
+  useEffect(() => {
+    if (!user) return
+    const load = () => api<Counters>('/api/my/counters').then(setCounters).catch(() => {})
+    load()
+    const timer = window.setInterval(load, 30_000)
+    return () => window.clearInterval(timer)
+  }, [user, location.pathname])
+  const refreshCounters = () =>
+    api<Counters>('/api/my/counters').then(setCounters).catch(() => {})
+
   const groups = useMemo(() => {
     const result: Group[] = [
       {
@@ -129,6 +152,7 @@ export function Layout() {
       if (isAdmin) children.push({ to: '/admin/document-types', label: 'Виды документов' })
       if (isAdmin) children.push({ to: '/admin/users', label: 'Пользователи' })
       children.push({ to: '/admin/route-rules', label: 'Матрица согласования' })
+      if (isAdmin) children.push({ to: '/admin/overdue', label: 'Просроченные задачи' })
       if (isAdmin) children.push({ to: '/admin/settings', label: 'Настройки BPM' })
       result.push({
         key: 'administration',
@@ -191,6 +215,10 @@ export function Layout() {
         {collapsed ? (
           <Stack sx={{ alignItems: 'center', pt: 2, pb: 1 }} spacing={0.5}>
             <Logo mark height={30} />
+            <NotificationsBell
+              unread={counters.unread_notifications}
+              onChanged={refreshCounters}
+            />
             <Tooltip title="Развернуть меню">
               <IconButton
                 size="small"
@@ -212,19 +240,43 @@ export function Layout() {
             }}
           >
             <Logo height={32} />
-            <Tooltip title="Свернуть меню">
-              <IconButton
-                size="small"
-                onClick={toggleCollapsed}
-                sx={{ color: 'text.secondary', p: 0.4 }}
-              >
-                <ChevronLeftIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+              <NotificationsBell
+                unread={counters.unread_notifications}
+                onChanged={refreshCounters}
+              />
+              <Tooltip title="Свернуть меню">
+                <IconButton
+                  size="small"
+                  onClick={toggleCollapsed}
+                  sx={{ color: 'text.secondary', p: 0.4 }}
+                >
+                  <ChevronLeftIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
           </Stack>
         )}
 
         <List sx={{ flexGrow: 1, pt: 0 }}>
+          <Tooltip title={collapsed ? 'Главная' : ''} placement="right">
+            <ListItemButton
+              component={NavLink}
+              to="/"
+              selected={location.pathname === '/'}
+              sx={{ ...itemSx, justifyContent: collapsed ? 'center' : 'flex-start' }}
+            >
+              <ListItemIcon sx={{ minWidth: collapsed ? 0 : 34, color: 'inherit' }}>
+                <HomeOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              {!collapsed && (
+                <ListItemText
+                  primary="Главная"
+                  slotProps={{ primary: { sx: { fontWeight: 600 } } }}
+                />
+              )}
+            </ListItemButton>
+          </Tooltip>
           <Tooltip title={collapsed ? 'Мои задачи' : ''} placement="right">
             <ListItemButton
               component={NavLink}
@@ -235,7 +287,13 @@ export function Layout() {
               <ListItemIcon
                 sx={{ minWidth: collapsed ? 0 : 34, color: 'inherit' }}
               >
-                <TaskAltIcon fontSize="small" />
+                <Badge
+                  badgeContent={counters.active_tasks}
+                  color={counters.overdue_tasks > 0 ? 'error' : 'primary'}
+                  max={99}
+                >
+                  <TaskAltIcon fontSize="small" />
+                </Badge>
               </ListItemIcon>
               {!collapsed && (
                 <ListItemText

@@ -77,6 +77,14 @@ const STAGE_TYPE_LABEL: Record<string, string> = {
   PARALLEL_ANY: ' · параллельно, любой',
 }
 
+interface ProcessCommentItem {
+  id: string
+  user_id: string
+  user_name: string | null
+  text: string
+  created_at: string
+}
+
 export function ProcessPage() {
   const { id } = useParams()
   const { user } = useAuth()
@@ -89,6 +97,11 @@ export function ProcessPage() {
   const [closeOpen, setCloseOpen] = useState(false)
   const [closeComment, setCloseComment] = useState('')
 
+  // обсуждение
+  const [comments, setComments] = useState<ProcessCommentItem[]>([])
+  const [commentText, setCommentText] = useState('')
+  const [commentBusy, setCommentBusy] = useState(false)
+
   const reload = useCallback(() => {
     api<Process>(`/api/processes/${id}`)
       .then((p) => {
@@ -96,11 +109,29 @@ export function ProcessPage() {
         api<DocumentItem>(`/api/documents/${p.object_id}`)
           .then(setDocumentItem)
           .catch(() => setDocumentItem(null))
+        api<ProcessCommentItem[]>(`/api/processes/${id}/comments`)
+          .then(setComments)
+          .catch(() => {})
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Ошибка'))
   }, [id])
 
   useEffect(reload, [reload])
+
+  const sendComment = async () => {
+    if (!commentText.trim()) return
+    setCommentBusy(true)
+    try {
+      const created = await api<ProcessCommentItem>(
+        `/api/processes/${id}/comments`,
+        { method: 'POST', body: { text: commentText.trim() } },
+      )
+      setComments((prev) => [...prev, created])
+      setCommentText('')
+    } finally {
+      setCommentBusy(false)
+    }
+  }
 
   useEffect(() => {
     api<DocumentTypeRef[]>('/api/refs/document-types').then(setDocTypes)
@@ -165,6 +196,10 @@ export function ProcessPage() {
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="Документ" sx={{ textTransform: 'none' }} />
         <Tab label="Согласование" sx={{ textTransform: 'none' }} />
+        <Tab
+          label={comments.length ? `Обсуждение (${comments.length})` : 'Обсуждение'}
+          sx={{ textTransform: 'none' }}
+        />
       </Tabs>
 
       {tab === 0 && (
@@ -318,6 +353,65 @@ export function ProcessPage() {
             </Table>
           </Paper>
         </>
+      )}
+
+      {tab === 2 && (
+        <Paper sx={{ p: 2.5 }}>
+          {comments.length === 0 ? (
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              Комментариев пока нет. Здесь можно задать вопрос инициатору
+              или уточнить детали без отклонения документа.
+            </Typography>
+          ) : (
+            <Stack spacing={1.5} sx={{ mb: 2 }}>
+              {comments.map((comment) => (
+                <Box
+                  key={comment.id}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 2,
+                    bgcolor: comment.user_id === user?.id ? 'primary.light' : '#f4f6f9',
+                  }}
+                >
+                  <Stack
+                    direction="row"
+                    sx={{ justifyContent: 'space-between', mb: 0.5 }}
+                  >
+                    <Typography variant="subtitle2">
+                      {comment.user_name ?? 'Пользователь'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatDateTime(comment.created_at)}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {comment.text}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          )}
+          <Stack direction="row" spacing={1}>
+            <TextField
+              placeholder="Написать комментарий…"
+              multiline
+              maxRows={4}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendComment()
+              }}
+            />
+            <Button
+              variant="contained"
+              onClick={sendComment}
+              disabled={commentBusy || !commentText.trim()}
+              sx={{ flexShrink: 0 }}
+            >
+              Отправить
+            </Button>
+          </Stack>
+        </Paper>
       )}
 
       <Dialog open={closeOpen} onClose={() => setCloseOpen(false)} fullWidth maxWidth="sm">

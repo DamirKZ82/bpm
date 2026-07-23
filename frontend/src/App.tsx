@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth'
 import { Layout } from './components/Layout'
 import { AdminPage } from './pages/Admin'
+import { DashboardPage } from './pages/Dashboard'
 import { DocumentsPage } from './pages/Documents'
 import { LoginPage } from './pages/Login'
 import { PrintDocumentPage } from './pages/PrintDocument'
@@ -17,7 +18,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/print/:documentId" element={<PrintDocumentPage />} />
           <Route element={<Layout />}>
-            <Route path="/" element={<Navigate to="/tasks" replace />} />
+            <Route path="/" element={<DashboardPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/documents/:typeCode" element={<DocumentsPage />} />
             <Route path="/memos" element={<Navigate to="/documents/MEMO" replace />} />

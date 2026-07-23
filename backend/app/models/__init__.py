@@ -17,6 +17,7 @@ from app.models.document_types import (
 )
 from app.models.domain import Attachment, Contract, Counterparty, Document
 from app.models.integration import ExternalMapping, IntegrationOutbox, SyncLog
+from app.models.notification import Notification, ProcessComment
 from app.models.process import AuditLog, ProcessInstance, Task
 from app.models.routing import ProjectAssignment, RouteRule, Substitution
 from app.models.settings import AppSetting
@@ -39,7 +40,9 @@ __all__ = [
     "Employment",
     "ExternalMapping",
     "IntegrationOutbox",
+    "Notification",
     "Organization",
+    "ProcessComment",
     "Position",
     "ProcessInstance",
     "Project",

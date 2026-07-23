@@ -4,17 +4,23 @@ from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
 from app.models import (
     AuditLog,
     Document,
     Employee,
     Organization,
+    ProcessComment,
     ProcessInstance,
     Project,
     Task,
     User,
 )
-from app.models.enums import UserRole
+from app.models.enums import TaskStatus, UserRole, UserStatus
+from app.services.process_service import _notify_users
 from app.schemas.process import (
     AuditRead,
     ForceCloseRequest,
@@ -119,6 +125,107 @@ async def get_process(process_id: uuid.UUID, user: CurrentUser, session: Session
             )
         result.audit.append(audit_read)
 
+    return result
+
+
+# --- Обсуждение процесса ---
+
+class CommentCreate(BaseModel):
+    text: str
+
+
+class CommentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    user_name: str | None = None
+    text: str
+    created_at: datetime
+
+
+async def _get_viewable_process(session, process_id, user) -> ProcessInstance:
+    process = await session.get(ProcessInstance, process_id)
+    if process is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    if not await _can_view(session, process, user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN)
+    return process
+
+
+@router.get("/{process_id}/comments", response_model=list[CommentRead])
+async def list_comments(process_id: uuid.UUID, user: CurrentUser, session: SessionDep):
+    await _get_viewable_process(session, process_id, user)
+    rows = (
+        await session.execute(
+            select(ProcessComment, User)
+            .outerjoin(User, ProcessComment.user_id == User.id)
+            .where(ProcessComment.process_id == process_id)
+            .order_by(ProcessComment.created_at)
+        )
+    ).all()
+    result = []
+    for comment, comment_user in rows:
+        item = CommentRead.model_validate(comment)
+        if comment_user:
+            item.user_name = comment_user.display_name or comment_user.ad_sam_account_name
+        result.append(item)
+    return result
+
+
+@router.post(
+    "/{process_id}/comments",
+    response_model=CommentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_comment(
+    process_id: uuid.UUID,
+    body: CommentCreate,
+    user: CurrentUser,
+    session: SessionDep,
+):
+    if not body.text.strip():
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Пустой комментарий")
+    process = await _get_viewable_process(session, process_id, user)
+    comment = ProcessComment(
+        process_id=process_id, user_id=user.id, text=body.text.strip()
+    )
+    session.add(comment)
+
+    # уведомить инициатора и исполнителей активных задач (кроме автора)
+    recipient_ids = [process.initiator_id]
+    assignee_employees = list(
+        await session.scalars(
+            select(Task.assignee_id).where(
+                Task.process_id == process_id, Task.status == TaskStatus.ACTIVE
+            )
+        )
+    )
+    if assignee_employees:
+        recipient_ids += list(
+            await session.scalars(
+                select(User.id).where(
+                    User.employee_id.in_(assignee_employees),
+                    User.status == UserStatus.ACTIVE,
+                )
+            )
+        )
+    document = await session.get(Document, process.object_id)
+    label = f"{document.number} «{document.subject}»" if document else "документ"
+    author = user.display_name or user.ad_sam_account_name
+    await _notify_users(
+        session,
+        recipient_ids,
+        title=f"Комментарий к {label}",
+        body=f"{author}: {body.text.strip()[:200]}",
+        link=f"/process/{process_id}",
+        exclude=user.id,
+    )
+
+    await session.commit()
+    await session.refresh(comment)
+    result = CommentRead.model_validate(comment)
+    result.user_name = author
     return result
 
 

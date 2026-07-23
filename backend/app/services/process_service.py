@@ -12,12 +12,20 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AuditLog, ProcessInstance, Task, User
+from app.models import (
+    AuditLog,
+    Document,
+    Notification,
+    ProcessInstance,
+    Task,
+    User,
+)
 from app.models.enums import (
     ProcessStatus,
     StageType,
     TaskResult,
     TaskStatus,
+    UserStatus,
 )
 from app.services.route_engine import RouteStage, build_route, route_to_snapshot
 
@@ -27,6 +35,68 @@ APPROVED_RESULTS = (TaskResult.APPROVED, TaskResult.AUTO_APPROVED)
 
 def utcnow() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+# --- In-app уведомления ---
+
+async def _document_label(session: AsyncSession, process: ProcessInstance) -> str:
+    document = await session.get(Document, process.object_id)
+    if document is None:
+        return "документ"
+    return f"{document.number} «{document.subject}»"
+
+
+async def _notify_users(
+    session: AsyncSession,
+    user_ids: list[uuid.UUID],
+    *,
+    title: str,
+    body: str | None = None,
+    link: str | None = None,
+    exclude: uuid.UUID | None = None,
+) -> None:
+    for user_id in set(user_ids):
+        if user_id == exclude:
+            continue
+        session.add(Notification(user_id=user_id, title=title, body=body, link=link))
+
+
+async def _notify_assignees(
+    session: AsyncSession, process: ProcessInstance, tasks: list[Task]
+) -> None:
+    employee_ids = {t.assignee_id for t in tasks}
+    if not employee_ids:
+        return
+    user_ids = list(
+        await session.scalars(
+            select(User.id).where(
+                User.employee_id.in_(employee_ids),
+                User.status == UserStatus.ACTIVE,
+            )
+        )
+    )
+    await _notify_users(
+        session,
+        user_ids,
+        title=f"Вам на согласование: {await _document_label(session, process)}",
+        link=f"/process/{process.id}",
+    )
+
+
+async def _notify_initiator(
+    session: AsyncSession,
+    process: ProcessInstance,
+    *,
+    title: str,
+    body: str | None = None,
+) -> None:
+    await _notify_users(
+        session,
+        [process.initiator_id],
+        title=f"{title}: {await _document_label(session, process)}",
+        body=body,
+        link=f"/process/{process.id}",
+    )
 
 
 async def _audit(
@@ -169,6 +239,9 @@ async def complete_task(
         await _audit(
             session, process_id=process.id, action="PROCESS_REJECTED", user_id=user.id
         )
+        await _notify_initiator(
+            session, process, title="Документ отклонён", body=comment
+        )
 
     await session.commit()
     await session.refresh(process)
@@ -216,6 +289,9 @@ async def force_close_process(
         payload={"comment": comment},
         ip=ip,
     )
+    await _notify_initiator(
+        session, process, title="Процесс закрыт администратором", body=comment
+    )
     await session.commit()
     await session.refresh(process)
     return process
@@ -247,9 +323,27 @@ def _slot_key(task: Task) -> tuple[int, int]:
 async def _advance(
     session: AsyncSession, process: ProcessInstance, *, ip: str | None
 ) -> None:
-    """Продвигает процесс: активирует этапы/слоты, автосогласует совпадения,
-    проверяет условия завершения этапов. Цикл — потому что автосогласование
-    может закрыть этап целиком и открыть следующий."""
+    """Продвижение процесса + уведомления: исполнителям — о новых задачах,
+    инициатору — о финальном согласовании."""
+    activated: list[Task] = []
+    await _advance_core(session, process, ip=ip, activated=activated)
+    still_active = [t for t in activated if t.status == TaskStatus.ACTIVE]
+    if still_active:
+        await _notify_assignees(session, process, still_active)
+    if process.status == ProcessStatus.APPROVED:
+        await _notify_initiator(session, process, title="Документ согласован")
+
+
+async def _advance_core(
+    session: AsyncSession,
+    process: ProcessInstance,
+    *,
+    ip: str | None,
+    activated: list[Task],
+) -> None:
+    """Активирует этапы/слоты, автосогласует совпадения, проверяет условия
+    завершения этапов. Цикл — потому что автосогласование может закрыть
+    этап целиком и открыть следующий."""
     initiator_employee_id = await session.scalar(
         select(User.employee_id).where(User.id == process.initiator_id)
     )
@@ -274,8 +368,9 @@ async def _advance(
                     task.status = TaskStatus.SKIPPED
             continue
 
-        activated = _activate_tasks(stage_meta, stage_tasks)
-        if not activated:
+        newly_activated = _activate_tasks(stage_meta, stage_tasks)
+        activated.extend(newly_activated)
+        if not newly_activated:
             return  # этап ждёт решений людей
 
         auto_approved = False
@@ -284,7 +379,7 @@ async def _advance(
             for t in tasks
             if t.result in APPROVED_RESULTS and t.stage_no < stage_meta["stage_no"]
         }
-        for task in activated:
+        for task in newly_activated:
             # Совпадение исполнителей: автосогласование, чтобы люди
             # не кликали одно и то же дважды (ТЗ §5.2)
             if task.assignee_id == initiator_employee_id:

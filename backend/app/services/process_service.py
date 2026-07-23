@@ -147,12 +147,37 @@ async def _notify_assignees(
         task_by_employee.setdefault(task.assignee_id, task.id)
     document = await session.get(Document, process.object_id)
     preview = (document.body or "").strip()[:200] if document else None
+
+    # шапка письма в стиле проверенных ECM: инициатор, срок
+    from app.models import Employee
+
+    init_user = await session.get(User, process.initiator_id)
+    initiator_name = None
+    if init_user:
+        if init_user.employee_id:
+            initiator_name = await session.scalar(
+                select(Employee.full_name).where(Employee.id == init_user.employee_id)
+            )
+        initiator_name = (
+            initiator_name or init_user.display_name or init_user.ad_sam_account_name
+        )
+    dues = [t.due_at for t in tasks if t.due_at]
+    header = []
+    if initiator_name:
+        header.append(f"Инициатор: {initiator_name}")
+    if dues:
+        header.append(f"Крайний срок: {min(dues):%d.%m.%Y %H:%M}")
+    summary = await _document_summary(session, process, document)
+    external = "\n".join(header)
+    if summary:
+        external = f"{external}\n\n{summary}" if external else summary
+
     await _notify_users(
         session,
         user_ids,
         title=f"Вам на согласование: {await _document_label(session, process)}",
         body=preview or None,
-        external_body=await _document_summary(session, process, document) or None,
+        external_body=external or None,
         link=f"/process/{process.id}",
         action_task_by_employee=task_by_employee,
     )

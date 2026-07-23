@@ -38,6 +38,12 @@ MAX_ATTEMPTS = 5
 # чаты, от которых ждём комментарий отклонения: chat_id -> task_id
 _pending_rejections: dict[int, str] = {}
 
+# маркеры почтового согласования (как в проверенных ECM): комментарий —
+# выше COMMENT_MARKER, служебный токен — между ^#^ ... ^#^
+COMMENT_MARKER = "*#*"
+_TOKEN_RE = re.compile(r"\^#\^([A-Za-z0-9._-]+)\^#\^")
+_APPROVE_TEMPLATE = "Согласовано через электронную почту."
+
 
 # --- Постановка в очередь (вызывается из сервисов при создании уведомления) ---
 
@@ -97,31 +103,52 @@ def enqueue_for_user(
 # Тема письма — ASCII, чтобы не ломалась MIME-кодировкой: "[BPM] APPROVE <token>".
 
 def _mailto_link(task_id: uuid.UUID, action: str, user_id: uuid.UUID) -> str:
+    """mailto-ссылка, формирующая ответное письмо: тема = результат,
+    комментарий пишется выше *#*, служебный токен — между ^#^."""
     token = create_email_action_token(task_id, action, user_id)
-    verb = "APPROVE" if action == "APR" else "REJECT"
-    subject = f"[BPM] {verb} {token}"
+    service = (
+        f"Служебная информация, не удаляйте и не изменяйте её:\n"
+        f"^#^{token}^#^"
+    )
     if action == "APR":
-        body = "Отправьте это письмо, чтобы согласовать документ."
+        subject = "Согласовано"
+        body = (
+            f"{_APPROVE_TEMPLATE}\n\n\n"
+            f"{COMMENT_MARKER} Выше можно вписать комментарий по задаче.\n"
+            f"{service}"
+        )
     else:
-        body = ("Причину отклонения напишите выше этой строки и отправьте "
-                "письмо.\n---")
+        subject = "Отклонено"
+        body = (
+            "\n\n\n"
+            f"{COMMENT_MARKER} Выше впишите причину отклонения (обязательно).\n"
+            f"{service}"
+        )
     return (
         f"mailto:{settings.service_email}"
         f"?subject={quote(subject)}&body={quote(body)}"
     )
 
 
+def _fmt_line(line: str) -> str:
+    """Жирная подпись у строк вида «Метка: значение»."""
+    if line.startswith("•") or ": " not in line:
+        return escape(line)
+    label, _, rest = line.partition(": ")
+    return f"<b>{escape(label)}:</b> {escape(rest)}"
+
+
 def _email_html(title: str, content: str | None, link: str | None,
                 apr: str, rej: str) -> str:
-    body_html = escape(content or "").replace("\n", "<br>")
+    body_html = "<br>".join(_fmt_line(ln) for ln in (content or "").split("\n"))
     link_html = (
-        f'<p><a href="{escape(link)}">Открыть документ в системе</a></p>'
+        f'<p><b>Ссылка:</b> <a href="{escape(link)}">Перейти к документу</a></p>'
         if link else ""
     )
     return f"""\
 <div style="font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;max-width:600px">
-  <h2 style="font-size:18px">{escape(title)}</h2>
-  <p style="color:#475569">{body_html}</p>
+  <p style="font-size:16px"><b>{escape(title)}</b></p>
+  <p style="color:#334155">{body_html}</p>
   {link_html}
   <p style="margin-top:20px">
     <a href="{escape(apr)}" style="display:inline-block;padding:10px 22px;
@@ -132,8 +159,9 @@ def _email_html(title: str, content: str | None, link: str | None,
        ✗ Отклонить</a>
   </p>
   <p style="color:#94a3b8;font-size:12px;margin-top:16px">
-    Кнопки формируют письмо на служебный адрес. Просто отправьте его —
-    система обработает действие. При отклонении укажите причину в теле письма.
+    Кнопки формируют ответное письмо на служебный адрес — просто отправьте его.
+    При отклонении впишите причину над служебной строкой. Служебную строку
+    (^#^…^#^) не удаляйте.
   </p>
 </div>"""
 
@@ -354,9 +382,6 @@ async def telegram_poller() -> None:
 
 # --- Согласование по почте: приём ответов через IMAP ---
 
-_SUBJECT_RE = re.compile(r"\[BPM\]\s+(APPROVE|REJECT)\s+([A-Za-z0-9._-]+)")
-
-
 def _decode_str(raw) -> str:
     try:
         return str(make_header(decode_header(raw or "")))
@@ -364,31 +389,43 @@ def _decode_str(raw) -> str:
         return raw or ""
 
 
-def _extract_body(message) -> str:
-    """Текст письма без цитат и служебных строк — как комментарий."""
-    text = ""
+def _decode_part(part) -> str:
+    payload = part.get_payload(decode=True) or b""
+    return payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+
+
+def _full_text(message) -> str:
+    """Текст письма целиком: text/plain, иначе text/html без тегов."""
+    plain = html = None
     if message.is_multipart():
         for part in message.walk():
-            if part.get_content_type() == "text/plain":
-                payload = part.get_payload(decode=True) or b""
-                charset = part.get_content_charset() or "utf-8"
-                text = payload.decode(charset, errors="replace")
-                break
+            ct = part.get_content_type()
+            if ct == "text/plain" and plain is None:
+                plain = _decode_part(part)
+            elif ct == "text/html" and html is None:
+                html = _decode_part(part)
+    elif message.get_content_type() == "text/html":
+        html = _decode_part(message)
     else:
-        payload = message.get_payload(decode=True) or b""
-        text = payload.decode(message.get_content_charset() or "utf-8", "replace")
-    lines = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith(">") or stripped == "---":
-            break
-        lines.append(line)
-    return "\n".join(lines).strip()
+        plain = _decode_part(message)
+    if plain:
+        return plain
+    if html:
+        return re.sub(r"<[^>]+>", " ", html)
+    return ""
+
+
+def _parse_comment(body: str) -> str:
+    """Комментарий = текст выше маркера *#* (без цитат, без шаблона approve)."""
+    head = body.split(COMMENT_MARKER, 1)[0]
+    lines = [ln for ln in head.splitlines() if not ln.strip().startswith(">")]
+    text = "\n".join(lines).strip()
+    return "" if text == _APPROVE_TEMPLATE else text
 
 
 def _fetch_inbox_actions() -> list[dict]:
-    """Синхронно: непрочитанные письма с токеном действия. Помечает
-    прочитанными. Возвращает [{action, token, sender, comment}]."""
+    """Синхронно: непрочитанные письма со служебным токеном в теле.
+    Помечает прочитанными. Возвращает [{token, sender, comment}]."""
     actions: list[dict] = []
     connect = imaplib.IMAP4_SSL if settings.imap_ssl else imaplib.IMAP4
     imap = connect(settings.imap_host, settings.imap_port)
@@ -398,19 +435,17 @@ def _fetch_inbox_actions() -> list[dict]:
         _, data = imap.search(None, "UNSEEN")
         for num in data[0].split():
             _, msg_data = imap.fetch(num, "(RFC822)")
-            raw = msg_data[0][1]
-            message = email_lib.message_from_bytes(raw)
-            subject = _decode_str(message.get("Subject"))
-            match = _SUBJECT_RE.search(subject)
+            message = email_lib.message_from_bytes(msg_data[0][1])
+            body = _full_text(message)
+            match = _TOKEN_RE.search(body)
             if not match:
-                continue  # не наше письмо — не трогаем (даже флаг не ставим)
+                continue  # не наше письмо — не трогаем (флаг не ставим)
             imap.store(num, "+FLAGS", "\\Seen")
             sender = parseaddr(_decode_str(message.get("From")))[1].lower()
             actions.append({
-                "action": "APR" if match.group(1) == "APPROVE" else "REJ",
-                "token": match.group(2),
+                "token": match.group(1),
                 "sender": sender,
-                "comment": _extract_body(message) if match.group(1) == "REJECT" else "",
+                "comment": _parse_comment(body),
             })
     finally:
         try:
@@ -427,6 +462,7 @@ async def _apply_email_action(item: dict) -> None:
         return  # просроченный/поддельный токен — игнор
     task_id = uuid.UUID(payload["tid"])
     user_id = uuid.UUID(payload["uid"])
+    approve = payload["act"] == "APR"
     async with async_session() as session:
         user = await session.get(User, user_id)
         task = await session.get(Task, task_id)
@@ -439,9 +475,10 @@ async def _apply_email_action(item: dict) -> None:
                 "expected": user.email, "got": item["sender"],
             }, ensure_ascii=False))
             return
-        approve = item["action"] == "APR"
-        comment = item["comment"] if not approve else "Согласовано по почте"
-        if not approve and not comment.strip():
+        comment = item["comment"].strip()
+        if approve:
+            comment = comment or "Согласовано по почте"
+        if not approve and not comment:
             _send_plain_email(
                 user.email, "BPM: укажите причину отклонения",
                 "Отклонение не выполнено: в письме не указана причина.\n"

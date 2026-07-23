@@ -29,6 +29,16 @@ class Settings(BaseSettings):
     db_name: str = "bpm"
     db_echo: bool = False
 
+    # Уведомления вовне (ТЗ §11): email + Telegram-бот, отправка через очередь
+    app_base_url: str = "http://localhost:5173"  # для ссылок в письмах
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_pass: str = ""
+    smtp_from: str = ""
+    telegram_bot_token: str = ""
+    workers_enabled: bool = True  # фоновые воркеры доставки и Telegram-поллер
+
     # Хранилище файлов (ТЗ §8.7: файлы в BPM, в 1С — только ссылки).
     # local — папка на диске; s3 — любое S3-совместимое хранилище
     # (AWS, MinIO, Yandex Object Storage, VK Cloud): для не-AWS задайте

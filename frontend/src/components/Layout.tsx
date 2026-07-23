@@ -29,6 +29,7 @@ import type { DocumentTypeRef } from '../api/types'
 import { useAuth } from '../auth'
 import { Logo } from './Logo'
 import { NotificationsBell } from './NotificationsBell'
+import { TelegramLinkDialog } from './TelegramLinkDialog'
 
 export interface Counters {
   active_tasks: number
@@ -455,6 +456,7 @@ export function Layout() {
               )}
             </Box>
           )}
+          {!collapsed && <TelegramLinkDialog />}
           <Tooltip title="Выйти">
             <IconButton size="small" onClick={logout} sx={{ color: NAV_TEXT }}>
               <LogoutIcon fontSize="small" />

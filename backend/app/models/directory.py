@@ -6,7 +6,7 @@ Read-only для бизнес-логики BPM — пишет в них толь
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import ForeignKey, String, text
+from sqlalchemy import BigInteger, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -114,5 +114,8 @@ class User(UUIDPKMixin, Base):
         default=lambda: ["INITIATOR"],
         server_default=text("'{INITIATOR}'"),
     )
+    # Привязка Telegram для уведомлений и согласования с телефона
+    telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger)
+    telegram_link_code: Mapped[str | None] = mapped_column(String(20))
     last_login_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)

@@ -54,11 +54,24 @@ async def _notify_users(
     body: str | None = None,
     link: str | None = None,
     exclude: uuid.UUID | None = None,
+    action_task_by_employee: dict[uuid.UUID, uuid.UUID] | None = None,
 ) -> None:
-    for user_id in set(user_ids):
-        if user_id == exclude:
-            continue
-        session.add(Notification(user_id=user_id, title=title, body=body, link=link))
+    """In-app уведомление + постановка в очередь email/Telegram."""
+    from app.services.notify_delivery import enqueue_for_user
+
+    ids = {u for u in user_ids if u != exclude}
+    if not ids:
+        return
+    users = await session.scalars(select(User).where(User.id.in_(ids)))
+    for user in users:
+        session.add(Notification(user_id=user.id, title=title, body=body, link=link))
+        action_task_id = None
+        if action_task_by_employee and user.employee_id:
+            action_task_id = action_task_by_employee.get(user.employee_id)
+        enqueue_for_user(
+            session, user,
+            title=title, body=body, link=link, action_task_id=action_task_id,
+        )
 
 
 async def _notify_assignees(
@@ -75,11 +88,15 @@ async def _notify_assignees(
             )
         )
     )
+    task_by_employee: dict[uuid.UUID, uuid.UUID] = {}
+    for task in tasks:
+        task_by_employee.setdefault(task.assignee_id, task.id)
     await _notify_users(
         session,
         user_ids,
         title=f"Вам на согласование: {await _document_label(session, process)}",
         link=f"/process/{process.id}",
+        action_task_by_employee=task_by_employee,
     )
 
 

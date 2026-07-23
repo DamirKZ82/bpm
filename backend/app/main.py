@@ -14,13 +14,32 @@ from fastapi.responses import JSONResponse
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+from contextlib import asynccontextmanager
+
 from app.api import admin, auth, documents, errors, notifications, processes, tasks
 from app.api.errors import new_error_code, user_id_from_request
 from app.api.routes import router
 from app.core.config import settings
 from app.core.logging_conf import get_logger
 
-app = FastAPI(title=settings.app_name, debug=False)
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Фоновые воркеры: доставка email/Telegram и Telegram-поллер."""
+    workers: list[asyncio.Task] = []
+    if settings.workers_enabled:
+        from app.services.notify_delivery import delivery_worker, telegram_poller
+
+        if settings.smtp_host or settings.telegram_bot_token:
+            workers.append(asyncio.create_task(delivery_worker()))
+        if settings.telegram_bot_token:
+            workers.append(asyncio.create_task(telegram_poller()))
+    yield
+    for worker in workers:
+        worker.cancel()
+
+
+app = FastAPI(title=settings.app_name, debug=False, lifespan=lifespan)
 
 logger = get_logger()
 

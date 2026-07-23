@@ -97,3 +97,67 @@ async def read_one(
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     notification.read = True
     await session.commit()
+
+
+# --- Привязка Telegram ---
+
+_bot_username: str | None = None
+
+
+async def _get_bot_username() -> str | None:
+    global _bot_username
+    from app.core.config import settings
+
+    if not settings.telegram_bot_token:
+        return None
+    if _bot_username is None:
+        from app.services.notify_delivery import telegram_api
+
+        result = await telegram_api("getMe", {}, timeout=15)
+        if result.get("ok"):
+            _bot_username = result["result"]["username"]
+    return _bot_username
+
+
+class TelegramStatus(BaseModel):
+    enabled: bool
+    linked: bool
+    bot_username: str | None = None
+
+
+@router.get("/my/telegram-status", response_model=TelegramStatus)
+async def telegram_status(user: CurrentUser, session: SessionDep):
+    from app.core.config import settings
+
+    fresh = await session.get(type(user), user.id)
+    return TelegramStatus(
+        enabled=bool(settings.telegram_bot_token),
+        linked=fresh.telegram_chat_id is not None,
+        bot_username=await _get_bot_username(),
+    )
+
+
+class TelegramLink(BaseModel):
+    code: str
+    bot_link: str | None
+
+
+@router.post("/my/telegram-link", response_model=TelegramLink)
+async def telegram_link(user: CurrentUser, session: SessionDep):
+    code = uuid.uuid4().hex[:8].upper()
+    fresh = await session.get(type(user), user.id)
+    fresh.telegram_link_code = code
+    await session.commit()
+    username = await _get_bot_username()
+    return TelegramLink(
+        code=code,
+        bot_link=f"https://t.me/{username}?start={code}" if username else None,
+    )
+
+
+@router.post("/my/telegram-unlink", status_code=status.HTTP_204_NO_CONTENT)
+async def telegram_unlink(user: CurrentUser, session: SessionDep):
+    fresh = await session.get(type(user), user.id)
+    fresh.telegram_chat_id = None
+    fresh.telegram_link_code = None
+    await session.commit()

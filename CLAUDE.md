@@ -63,7 +63,11 @@ npm run dev                        # http://localhost:5173
 - Модели: `app/models/`, разбиты по доменам (directory / routing / process /
   domain / integration), enum'ы в `enums.py`, PK — UUID
 - Настройки: `app/core/config.py` (pydantic-settings, `.env`, extra="ignore")
-- `.env` не коммитится; содержит DB_PASS, SMTP, Telegram-токен
+- `.env` не коммитится; содержит DB_PASS, SMTP_*, TELEGRAM_BOT_TOKEN
+- Уведомления вовне: очередь outbound_messages + фоновые воркеры в lifespan
+  (`app/services/notify_delivery.py`) — email по SMTP и Telegram-бот
+  (long polling, наружу порты не открываются). Кнопки в Telegram позволяют
+  согласовать/отклонить с телефона; привязка — код из меню пользователя
 - Файлы-вложения: `app/services/storage.py` (local | s3, любое S3-совместимое
   через boto3). Конфигурация — в БД (app_settings, ключ storage), правится
   админом на странице «Настройки BPM»; .env — только значения по умолчанию.

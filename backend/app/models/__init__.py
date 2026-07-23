@@ -19,6 +19,7 @@ from app.models.domain import Attachment, Contract, Counterparty, Document
 from app.models.error_log import ErrorLog
 from app.models.integration import ExternalMapping, IntegrationOutbox, SyncLog
 from app.models.notification import Notification, ProcessComment
+from app.models.outbound import OutboundMessage
 from app.models.process import AuditLog, ProcessInstance, Task
 from app.models.routing import ProjectAssignment, RouteRule, Substitution
 from app.models.settings import AppSetting
@@ -44,6 +45,7 @@ __all__ = [
     "IntegrationOutbox",
     "Notification",
     "Organization",
+    "OutboundMessage",
     "ProcessComment",
     "Position",
     "ProcessInstance",

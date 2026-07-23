@@ -19,6 +19,7 @@ class OutboundMessage(UUIDPKMixin, Base):
     recipient: Mapped[str] = mapped_column(String(300))  # email или chat_id
     subject: Mapped[str | None] = mapped_column(String(300))
     body: Mapped[str] = mapped_column(Text)
+    html_body: Mapped[str | None] = mapped_column(Text)  # для email с кнопками
     # inline-кнопки Telegram: [{"text": ..., "callback_data": ...}]
     buttons: Mapped[list[Any] | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(10), default="PENDING")

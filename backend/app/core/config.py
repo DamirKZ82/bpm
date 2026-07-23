@@ -36,8 +36,28 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_pass: str = ""
     smtp_from: str = ""
+    # IMAP: приём ответов для согласования по почте (пусто = выключено).
+    # Для mail.ru: IMAP_HOST=imap.mail.ru; логин/пароль по умолчанию — как SMTP
+    imap_host: str = ""
+    imap_port: int = 993
+    imap_ssl: bool = True
+    imap_user: str = ""
+    imap_pass: str = ""
     telegram_bot_token: str = ""
-    workers_enabled: bool = True  # фоновые воркеры доставки и Telegram-поллер
+    workers_enabled: bool = True  # фоновые воркеры доставки, Telegram, IMAP
+
+    @property
+    def imap_login(self) -> str:
+        return self.imap_user or self.smtp_user
+
+    @property
+    def imap_password(self) -> str:
+        return self.imap_pass or self.smtp_pass
+
+    @property
+    def service_email(self) -> str:
+        """Адрес, на который приходят ответы согласования."""
+        return self.smtp_from or self.smtp_user
 
     # Хранилище файлов (ТЗ §8.7: файлы в BPM, в 1С — только ссылки).
     # local — папка на диске; s3 — любое S3-совместимое хранилище

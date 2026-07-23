@@ -28,12 +28,18 @@ async def lifespan(_: FastAPI):
     """Фоновые воркеры: доставка email/Telegram и Telegram-поллер."""
     workers: list[asyncio.Task] = []
     if settings.workers_enabled:
-        from app.services.notify_delivery import delivery_worker, telegram_poller
+        from app.services.notify_delivery import (
+            delivery_worker,
+            imap_poller,
+            telegram_poller,
+        )
 
         if settings.smtp_host or settings.telegram_bot_token:
             workers.append(asyncio.create_task(delivery_worker()))
         if settings.telegram_bot_token:
             workers.append(asyncio.create_task(telegram_poller()))
+        if settings.imap_host:
+            workers.append(asyncio.create_task(imap_poller()))
     yield
     for worker in workers:
         worker.cancel()

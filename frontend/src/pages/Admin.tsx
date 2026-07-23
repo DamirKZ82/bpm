@@ -1,6 +1,7 @@
 import { Navigate, useParams } from 'react-router-dom'
 import { CrudTable } from '../components/CrudTable'
 import type { EntityConfig } from '../components/CrudTable'
+import { AuditPage } from './Audit'
 import { DictionariesPage } from './Dictionaries'
 import { DocumentTypesPage } from './DocumentTypes'
 import { OverduePage } from './Overdue'
@@ -168,6 +169,10 @@ export function AdminPage() {
   if (entity === 'overdue') {
     if (!isAdmin) return <Navigate to="/tasks" replace />
     return <OverduePage />
+  }
+  if (entity === 'audit') {
+    if (!isAdmin) return <Navigate to="/tasks" replace />
+    return <AuditPage />
   }
   if (!entity || !ENTITIES[entity]) return <Navigate to="/admin/organizations" replace />
   if (!isAdmin) return <Navigate to="/tasks" replace />

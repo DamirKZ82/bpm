@@ -22,6 +22,7 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
+import { AUDIT_LABELS } from '../auditLabels'
 import type {
   DocumentItem,
   DocumentTypeRef,
@@ -41,17 +42,6 @@ function formatDateTime(value: string | null): string {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
-}
-
-const AUDIT_LABELS: Record<string, string> = {
-  PROCESS_STARTED: 'Процесс запущен',
-  TASK_APPROVED: 'Согласовано',
-  TASK_REJECTED: 'Отклонено',
-  TASK_AUTO_APPROVED: 'Автосогласовано',
-  PROCESS_APPROVED: 'Процесс согласован',
-  PROCESS_REJECTED: 'Процесс отклонён',
-  PROCESS_CANCELLED: 'Процесс отозван инициатором',
-  PROCESS_FORCE_CLOSED: 'Процесс закрыт администратором',
 }
 
 const STAGE_COLORS: Record<string, string> = {

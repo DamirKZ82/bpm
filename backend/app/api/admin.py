@@ -857,6 +857,83 @@ async def update_user(user_id: uuid.UUID, payload: UserUpdate, session: SessionD
 router.include_router(users_router)
 
 
+# --- Журнал аудита (ТЗ §6.4: кто, когда, что, комментарий, IP) ---
+
+class AuditJournalRow(BaseModel):
+    id: uuid.UUID
+    created_at: object
+    user_name: str | None
+    action: str
+    process_id: uuid.UUID | None
+    doc_number: str | None
+    subject: str | None
+    comment: str | None
+    ip: str | None
+
+
+@router.get(
+    "/audit",
+    response_model=list[AuditJournalRow],
+    dependencies=[Depends(require_roles())],
+)
+async def audit_journal(
+    session: SessionDep,
+    user_id: uuid.UUID | None = None,
+    action: str | None = None,
+    date_from: Date | None = None,
+    date_to: Date | None = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    from datetime import datetime, timedelta
+
+    from app.models import AuditLog, Document, ProcessInstance
+
+    stmt = (
+        select(AuditLog, User, Document)
+        .outerjoin(User, AuditLog.user_id == User.id)
+        .outerjoin(ProcessInstance, AuditLog.process_id == ProcessInstance.id)
+        .outerjoin(Document, ProcessInstance.object_id == Document.id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(min(limit, 500))
+        .offset(offset)
+    )
+    if user_id is not None:
+        stmt = stmt.where(AuditLog.user_id == user_id)
+    if action:
+        stmt = stmt.where(AuditLog.action == action)
+    if date_from is not None:
+        stmt = stmt.where(
+            AuditLog.created_at >= datetime.combine(date_from, datetime.min.time())
+        )
+    if date_to is not None:
+        stmt = stmt.where(
+            AuditLog.created_at
+            < datetime.combine(date_to, datetime.min.time()) + timedelta(days=1)
+        )
+
+    result = []
+    for entry, entry_user, document in (await session.execute(stmt)).all():
+        payload = entry.payload or {}
+        comment = payload.get("comment") or payload.get("reason")
+        result.append(
+            AuditJournalRow(
+                id=entry.id,
+                created_at=entry.created_at,
+                user_name=(
+                    entry_user.display_name or entry_user.ad_sam_account_name
+                ) if entry_user else None,
+                action=entry.action,
+                process_id=entry.process_id,
+                doc_number=document.number if document else None,
+                subject=document.subject if document else None,
+                comment=comment if isinstance(comment, str) else None,
+                ip=entry.ip,
+            )
+        )
+    return result
+
+
 # --- Просроченные задачи (эскалация, ТЗ §6.4) ---
 
 class OverdueTaskRead(BaseModel):

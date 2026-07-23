@@ -27,7 +27,7 @@ import type { DocumentTypeRef } from '../api/types'
 import { useAuth } from '../auth'
 import { Logo } from './Logo'
 
-const WIDTH_OPEN = 250
+const WIDTH_OPEN = 278
 const WIDTH_COLLAPSED = 68
 
 // цвета текста меню: заметно темнее, чем text.secondary

@@ -1051,3 +1051,93 @@ async def update_storage_settings(
     config = StorageConfig(**data)
     await save_storage_config(session, config)
     return _storage_settings_response(config)
+
+
+# --- Настройки обмена справочниками с 1С (ТЗ §2) ---
+# Значения по умолчанию из «Разделения ответственности»:
+# entity_type, name, source_system, can_receive, can_send
+_EXCHANGE_DEFAULTS = [
+    ("ORGANIZATION", "Организации", "BUH", True, False),
+    ("DEPARTMENT", "Подразделения", "ZUP", True, False),
+    ("POSITION", "Должности", "ZUP", True, False),
+    ("EMPLOYEE", "Сотрудники", "ZUP", True, False),
+    ("ABSENCE", "Отсутствия", "ZUP", True, False),
+    ("PROJECT", "Проекты", "BUH", True, False),
+    ("COUNTERPARTY", "Контрагенты", "BUH", True, True),
+    ("CONTRACT", "Договоры", "BUH", True, True),
+]
+
+
+async def _ensure_exchange_defaults(session) -> None:
+    from app.models import ExchangeSetting
+
+    existing = set(await session.scalars(select(ExchangeSetting.entity_type)))
+    changed = False
+    for order, (code, name, src, recv, send) in enumerate(_EXCHANGE_DEFAULTS):
+        if code not in existing:
+            session.add(ExchangeSetting(
+                entity_type=code, name=name, source_system=src,
+                can_receive=recv, can_send=send, active=True, sort_order=order,
+            ))
+            changed = True
+    if changed:
+        await session.commit()
+
+
+class ExchangeSettingRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    entity_type: str
+    name: str
+    source_system: str
+    can_receive: bool
+    can_send: bool
+    active: bool
+    sort_order: int
+
+
+class ExchangeSettingUpdate(BaseModel):
+    source_system: str | None = None
+    can_receive: bool | None = None
+    can_send: bool | None = None
+    active: bool | None = None
+
+
+@router.get(
+    "/exchange-settings",
+    response_model=list[ExchangeSettingRead],
+    dependencies=[Depends(require_roles())],
+)
+async def list_exchange_settings(session: SessionDep):
+    from app.models import ExchangeSetting
+
+    await _ensure_exchange_defaults(session)
+    rows = await session.scalars(
+        select(ExchangeSetting).order_by(ExchangeSetting.sort_order)
+    )
+    return list(rows)
+
+
+@router.patch(
+    "/exchange-settings/{setting_id}",
+    response_model=ExchangeSettingRead,
+    dependencies=[Depends(require_roles())],
+)
+async def update_exchange_setting(
+    setting_id: uuid.UUID, payload: ExchangeSettingUpdate, session: SessionDep
+):
+    from app.models import ExchangeSetting
+
+    setting = await session.get(ExchangeSetting, setting_id)
+    if setting is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    if payload.source_system is not None and payload.source_system not in ("ZUP", "BUH"):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Система: ZUP или BUH"
+        )
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(setting, key, value)
+    await session.commit()
+    await session.refresh(setting)
+    return setting

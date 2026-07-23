@@ -17,6 +17,7 @@ from app.models.document_types import (
 )
 from app.models.domain import Attachment, Contract, Counterparty, Document
 from app.models.error_log import ErrorLog
+from app.models.exchange import ExchangeSetting
 from app.models.integration import ExternalMapping, IntegrationOutbox, SyncLog
 from app.models.notification import Notification, ProcessComment
 from app.models.outbound import OutboundMessage
@@ -41,6 +42,7 @@ __all__ = [
     "Employee",
     "Employment",
     "ErrorLog",
+    "ExchangeSetting",
     "ExternalMapping",
     "IntegrationOutbox",
     "Notification",

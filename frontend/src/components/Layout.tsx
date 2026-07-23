@@ -152,6 +152,7 @@ export function Layout() {
       const children: Leaf[] = []
       if (isAdmin) children.push({ to: '/admin/document-types', label: 'Виды документов' })
       if (isAdmin) children.push({ to: '/admin/users', label: 'Пользователи' })
+      if (isAdmin) children.push({ to: '/admin/exchange', label: 'Обмен с 1С' })
       children.push({ to: '/admin/route-rules', label: 'Матрица согласования' })
       if (isAdmin) children.push({ to: '/admin/overdue', label: 'Просроченные задачи' })
       if (isAdmin) children.push({ to: '/admin/audit', label: 'Журнал аудита' })

@@ -1000,7 +1000,12 @@ async def settings_info():
     """Информация о конфигурации для страницы «Настройки BPM»."""
     from app.core.config import settings
 
-    return {"auth_mode": settings.auth_mode}
+    return {
+        "auth_mode": settings.auth_mode,
+        "email_enabled": bool(settings.smtp_host),
+        "telegram_enabled": bool(settings.telegram_bot_token),
+        "email_approval_enabled": bool(settings.imap_host),
+    }
 
 
 # --- Настройки хранилища файлов: хранятся в БД, правятся из UI ---

@@ -20,9 +20,16 @@ interface StorageSettings {
   s3_secret_set: boolean
 }
 
+interface SettingsInfo {
+  auth_mode: string
+  email_enabled: boolean
+  telegram_enabled: boolean
+  email_approval_enabled: boolean
+}
+
 export function SettingsPage() {
   const [apiOk, setApiOk] = useState<boolean | null>(null)
-  const [authMode, setAuthMode] = useState<string | null>(null)
+  const [info, setInfo] = useState<SettingsInfo | null>(null)
   const [storage, setStorage] = useState<StorageSettings | null>(null)
   const [secret, setSecret] = useState('')
   const [saved, setSaved] = useState(false)
@@ -33,13 +40,15 @@ export function SettingsPage() {
     api<{ status: string }>('/api/health')
       .then((r) => setApiOk(r.status === 'ok'))
       .catch(() => setApiOk(false))
-    api<{ auth_mode: string }>('/api/admin/settings-info')
-      .then((r) => setAuthMode(r.auth_mode))
+    api<SettingsInfo>('/api/admin/settings-info')
+      .then(setInfo)
       .catch(() => {})
     api<StorageSettings>('/api/admin/settings/storage')
       .then(setStorage)
       .catch(() => {})
   }, [])
+
+  const authMode = info?.auth_mode ?? null
 
   const saveStorage = async () => {
     if (!storage) return
@@ -104,8 +113,33 @@ export function SettingsPage() {
             </Typography>
           </Stack>
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-            <Typography sx={{ width: 260, flexShrink: 0 }}>Уведомления (email / Telegram)</Typography>
-            <Chip label="Не настроены" size="small" variant="outlined" />
+            <Typography sx={{ width: 260, flexShrink: 0 }}>Уведомления</Typography>
+            <Chip
+              label={info?.email_enabled ? 'Email включён' : 'Email выключен'}
+              color={info?.email_enabled ? 'success' : 'default'}
+              size="small"
+              variant="outlined"
+            />
+            <Chip
+              label={info?.telegram_enabled ? 'Telegram включён' : 'Telegram выключен'}
+              color={info?.telegram_enabled ? 'success' : 'default'}
+              size="small"
+              variant="outlined"
+            />
+          </Stack>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+            <Typography sx={{ width: 260, flexShrink: 0 }}>Согласование по почте</Typography>
+            <Chip
+              label={info?.email_approval_enabled ? 'Включено (IMAP)' : 'Выключено'}
+              color={info?.email_approval_enabled ? 'success' : 'default'}
+              size="small"
+              variant="outlined"
+            />
+            {!info?.email_approval_enabled && (
+              <Typography variant="body2" color="text.secondary">
+                Включается IMAP_HOST в .env (для mail.ru: imap.mail.ru)
+              </Typography>
+            )}
           </Stack>
         </Stack>
       </Paper>

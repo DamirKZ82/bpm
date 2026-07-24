@@ -15,7 +15,13 @@ from app.models.document_types import (
     DocumentType,
     DocumentTypeField,
 )
-from app.models.domain import Attachment, Contract, Counterparty, Document
+from app.models.domain import (
+    Attachment,
+    Contract,
+    Counterparty,
+    Document,
+    VatRate,
+)
 from app.models.error_log import ErrorLog
 from app.models.exchange import ExchangeSetting
 from app.models.integration import ExternalMapping, IntegrationOutbox, SyncLog
@@ -58,4 +64,5 @@ __all__ = [
     "SyncLog",
     "Task",
     "User",
+    "VatRate",
 ]

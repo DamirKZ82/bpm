@@ -7,6 +7,8 @@ from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
+    Contract,
+    Counterparty,
     Dictionary,
     DictionaryItem,
     Document,
@@ -16,6 +18,7 @@ from app.models import (
     Organization,
     Position,
     Project,
+    VatRate,
 )
 from app.models.enums import EmployeeStatus
 from app.services.route_engine import RouteError, build_route, route_to_snapshot
@@ -226,6 +229,60 @@ async def ref_dictionaries(user: CurrentUser, session: SessionDep):
         ]
         result.append(ref)
     return result
+
+
+class CounterpartyRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    bin: str | None
+
+
+@router.get("/refs/counterparties", response_model=list[CounterpartyRef])
+async def ref_counterparties(user: CurrentUser, session: SessionDep):
+    rows = await session.scalars(
+        select(Counterparty)
+        .where(Counterparty.active.is_(True))
+        .order_by(Counterparty.name)
+    )
+    return list(rows)
+
+
+class ContractRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    number: str | None
+    counterparty_id: uuid.UUID
+
+
+@router.get("/refs/contracts", response_model=list[ContractRef])
+async def ref_contracts(user: CurrentUser, session: SessionDep):
+    rows = await session.scalars(
+        select(Contract)
+        .where(Contract.active.is_(True))
+        .order_by(Contract.number)
+    )
+    return list(rows)
+
+
+class VatRateRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    rate: float | None
+
+
+@router.get("/refs/vat-rates", response_model=list[VatRateRef])
+async def ref_vat_rates(user: CurrentUser, session: SessionDep):
+    rows = await session.scalars(
+        select(VatRate)
+        .where(VatRate.active.is_(True))
+        .order_by(VatRate.sort_order, VatRate.name)
+    )
+    return list(rows)
 
 
 class RoutePreview(BaseModel):

@@ -6,10 +6,12 @@
 (в т.ч. заведённые вручную с тем же названием) делает системными, не меняя
 их code/prefix и не трогая связанные документы.
 """
-from sqlalchemy import select
+from decimal import Decimal
+
+from sqlalchemy import func, select
 
 from app.core.db import async_session
-from app.models import DocumentType
+from app.models import DocumentType, VatRate
 
 # (code по умолчанию, название, префикс номера)
 STANDARD_TYPES = [
@@ -49,3 +51,21 @@ async def ensure_system_document_types() -> None:
             changed = True
         if changed:
             await session.commit()
+
+
+# типовые ставки НДС РК (создаются только если справочник пуст)
+DEFAULT_VAT_RATES = [
+    ("НДС 12%", Decimal("12"), 0),
+    ("НДС 0%", Decimal("0"), 1),
+    ("Без НДС", None, 2),
+]
+
+
+async def ensure_vat_rates() -> None:
+    async with async_session() as session:
+        count = await session.scalar(select(func.count()).select_from(VatRate))
+        if count:
+            return
+        for name, rate, order in DEFAULT_VAT_RATES:
+            session.add(VatRate(name=name, rate=rate, active=True, sort_order=order))
+        await session.commit()

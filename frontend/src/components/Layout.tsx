@@ -75,6 +75,9 @@ const DIRECTORY_LEAVES: [string, string][] = [
   ['/admin/employments', 'nav.employments'],
   ['/admin/projects', 'nav.projects'],
   ['/admin/project-assignments', 'nav.projectAssignments'],
+  ['/admin/counterparties', 'nav.counterparties'],
+  ['/admin/contracts', 'nav.contracts'],
+  ['/admin/vat-rates', 'nav.vatRates'],
   ['/admin/absences', 'nav.absences'],
   ['/admin/substitutions', 'nav.substitutions'],
 ]

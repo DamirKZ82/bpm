@@ -14,6 +14,8 @@ from sqlalchemy import func, select
 from app.api.deps import SessionDep, require_roles
 from app.models import (
     Absence,
+    Contract,
+    Counterparty,
     Department,
     Dictionary,
     DictionaryItem,
@@ -29,6 +31,7 @@ from app.models import (
     RouteRule,
     Substitution,
     User,
+    VatRate,
 )
 from app.models.enums import (
     FieldType,
@@ -41,6 +44,17 @@ from app.models.enums import (
     UserStatus,
 )
 from app.schemas.auth import UserRead
+from app.schemas.domain import (
+    ContractCreate,
+    ContractRead,
+    ContractUpdate,
+    CounterpartyCreate,
+    CounterpartyRead,
+    CounterpartyUpdate,
+    VatRateCreate,
+    VatRateRead,
+    VatRateUpdate,
+)
 from app.schemas.directory import (
     AbsenceCreate,
     AbsenceRead,
@@ -190,6 +204,11 @@ for _model, _prefix, _c, _u, _r, _roles, _exch in [
     (Project, "/projects", ProjectCreate, ProjectUpdate, ProjectRead, _ADMIN_ONLY, "PROJECT"),
     (ProjectAssignment, "/project-assignments", ProjectAssignmentCreate, ProjectAssignmentUpdate, ProjectAssignmentRead, _ADMIN_ONLY, None),
     (Substitution, "/substitutions", SubstitutionCreate, SubstitutionUpdate, SubstitutionRead, _ADMIN_ONLY, None),
+    # контрагенты и договоры — обмен с БУХ (получаем и отправляем): создавать
+    # и менять можно, удаления нет (деактивация). Ставки НДС — справочник BPM.
+    (Counterparty, "/counterparties", CounterpartyCreate, CounterpartyUpdate, CounterpartyRead, _ADMIN_ONLY, "COUNTERPARTY"),
+    (Contract, "/contracts", ContractCreate, ContractUpdate, ContractRead, _ADMIN_ONLY, "CONTRACT"),
+    (VatRate, "/vat-rates", VatRateCreate, VatRateUpdate, VatRateRead, _ADMIN_ONLY, None),
 ]:
     router.include_router(
         _crud_router(

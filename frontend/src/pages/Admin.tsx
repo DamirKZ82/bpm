@@ -32,6 +32,8 @@ const ORG = { optionsUrl: '/api/admin/organizations', optionLabel: 'name' }
 const POS = { optionsUrl: '/api/admin/positions', optionLabel: 'name' }
 const EMP = { optionsUrl: '/api/admin/employees', optionLabel: 'full_name' }
 const PROJ = { optionsUrl: '/api/admin/projects', optionLabel: 'name' }
+const CPARTY = { optionsUrl: '/api/admin/counterparties', optionLabel: 'name' }
+const VAT = { optionsUrl: '/api/admin/vat-rates', optionLabel: 'name' }
 
 export const ENTITIES: Record<string, EntityConfig> = {
   organizations: {
@@ -121,6 +123,51 @@ export const ENTITIES: Record<string, EntityConfig> = {
       { key: 'organization_id', label: 'Организация', ...ORG },
       { key: 'status', label: 'Статус' },
       { key: 'active', label: 'Активен', type: 'checkbox' },
+    ],
+  },
+  counterparties: {
+    title: 'Контрагенты',
+    endpoint: '/api/admin/counterparties',
+    hint: 'Обмен с 1С:БУХ — можно создавать в BPM. Удаления нет, только деактивация',
+    exchangeEntity: 'COUNTERPARTY',
+    fields: [
+      { key: 'name', label: 'Наименование', required: true },
+      { key: 'bin', label: 'БИН / ИИН' },
+      { key: 'full_name', label: 'Полное наименование', inTable: false },
+      { key: 'address', label: 'Адрес', inTable: false },
+      { key: 'active', label: 'Активен', type: 'checkbox' },
+    ],
+  },
+  contracts: {
+    title: 'Договоры',
+    endpoint: '/api/admin/contracts',
+    hint: 'Обмен с 1С:БУХ — можно создавать в BPM. Удаления нет, только деактивация',
+    exchangeEntity: 'CONTRACT',
+    fields: [
+      { key: 'number', label: 'Номер' },
+      { key: 'date', label: 'Дата', type: 'date' },
+      { key: 'counterparty_id', label: 'Контрагент', required: true, ...CPARTY },
+      { key: 'organization_id', label: 'Организация', required: true, ...ORG },
+      { key: 'project_id', label: 'Проект', ...PROJ, inTable: false },
+      { key: 'contract_type', label: 'Вид договора', inTable: false },
+      { key: 'amount', label: 'Сумма', type: 'number' },
+      { key: 'vat_rate_id', label: 'Ставка НДС', ...VAT },
+      { key: 'currency', label: 'Валюта', inTable: false },
+      { key: 'valid_from', label: 'Действует с', type: 'date', inTable: false },
+      { key: 'valid_to', label: 'Действует по', type: 'date', inTable: false },
+      { key: 'responsible_id', label: 'Ответственный', ...EMP, inTable: false },
+      { key: 'active', label: 'Активен', type: 'checkbox' },
+    ],
+  },
+  'vat-rates': {
+    title: 'Ставки НДС',
+    endpoint: '/api/admin/vat-rates',
+    hint: 'Справочник ставок НДС для договоров и заявок',
+    fields: [
+      { key: 'name', label: 'Наименование', required: true },
+      { key: 'rate', label: 'Ставка, %', type: 'number' },
+      { key: 'sort_order', label: 'Порядок', type: 'number', inTable: false },
+      { key: 'active', label: 'Активна', type: 'checkbox' },
     ],
   },
   'project-assignments': {

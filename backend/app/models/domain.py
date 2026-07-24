@@ -30,9 +30,23 @@ class Counterparty(UUIDPKMixin, Base):
     sync_status: Mapped[CounterpartySyncStatus] = mapped_column(
         default=CounterpartySyncStatus.DRAFT
     )
+    # справочник из интеграции: удаления нет, вместо него деактивация
+    active: Mapped[bool] = mapped_column(default=True, server_default=sa_text("true"))
     created_from_process_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("process_instances.id")
     )
+
+
+class VatRate(UUIDPKMixin, Base):
+    """Ставка НДС: название и процент (NULL = без НДС). Например «НДС 12%»,
+    «НДС 0%», «Без НДС»."""
+
+    __tablename__ = "vat_rates"
+
+    name: Mapped[str] = mapped_column(String(100))
+    rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))  # процент
+    active: Mapped[bool] = mapped_column(default=True, server_default=sa_text("true"))
+    sort_order: Mapped[int] = mapped_column(default=0)
 
 
 class Contract(UUIDPKMixin, Base):
@@ -48,6 +62,7 @@ class Contract(UUIDPKMixin, Base):
     date: Mapped[date | None]
     contract_type: Mapped[str | None] = mapped_column(String(100))
     amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    vat_rate_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("vat_rates.id"))
     currency: Mapped[str] = mapped_column(String(3), default="KZT")
     valid_from: Mapped[date | None]
     valid_to: Mapped[date | None]
@@ -58,6 +73,7 @@ class Contract(UUIDPKMixin, Base):
     sync_status: Mapped[ContractSyncStatus] = mapped_column(
         default=ContractSyncStatus.DRAFT
     )
+    active: Mapped[bool] = mapped_column(default=True, server_default=sa_text("true"))
     process_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("process_instances.id")
     )

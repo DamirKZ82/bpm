@@ -67,17 +67,20 @@ export function CrudTable({ config }: { config: EntityConfig }) {
   const [error, setError] = useState('')
   const [listError, setListError] = useState('')
   const [busy, setBusy] = useState(false)
-  // справочник «только получаем из 1С» — полностью read-only
+  // справочник «только получаем из 1С» — полностью read-only;
+  // «получаем и отправляем» — можно создавать/менять, но без удаления
   const [readOnly, setReadOnly] = useState(false)
+  const [noHardDelete, setNoHardDelete] = useState(false)
 
   useEffect(() => {
-    if (!config.exchangeEntity) { setReadOnly(false); return }
+    if (!config.exchangeEntity) { setReadOnly(false); setNoHardDelete(false); return }
     api<ExchangeSettingRow[]>('/api/admin/exchange-settings')
       .then((list) => {
         const s = list.find((x) => x.entity_type === config.exchangeEntity)
         setReadOnly(!!s && s.can_receive && !s.can_send)
+        setNoHardDelete(!!s)  // любой справочник обмена — удаления нет
       })
-      .catch(() => setReadOnly(false))
+      .catch(() => { setReadOnly(false); setNoHardDelete(false) })
   }, [config.exchangeEntity])
 
   const reload = useCallback(() => {
@@ -165,7 +168,7 @@ export function CrudTable({ config }: { config: EntityConfig }) {
   }
 
   const canEdit = config.canEdit !== false && !readOnly
-  const canDelete = config.canDelete !== false && !readOnly
+  const canDelete = config.canDelete !== false && !readOnly && !noHardDelete
   const tableFields = config.fields.filter((f) => f.inTable !== false)
   const formFields = config.fields.filter((f) => f.inForm !== false)
 

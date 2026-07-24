@@ -141,10 +141,9 @@ export function Layout() {
         label: t('nav.documents'),
         icon: <DescriptionOutlinedIcon fontSize="small" />,
         children: docTypes.length
-          ? docTypes.map((dt, index) => ({
+          ? docTypes.map((dt) => ({
               to: `/documents/${dt.code}`,
               label: dt.name,  // название вида — пользовательские данные
-              also: index === 0 ? ['/process'] : undefined,
             }))
           : [{ to: '/documents/MEMO', label: t('nav.documents') }],
       },
@@ -183,6 +182,25 @@ export function Layout() {
 
   const [open, setOpen] = useState<Record<string, boolean>>({ documents: true })
 
+  // на странице процесса подсвечиваем вид документа, к которому он относится
+  const [activeObjectType, setActiveObjectType] = useState<string | null>(null)
+  useEffect(() => {
+    const match = location.pathname.match(/^\/process\/([^/]+)/)
+    if (!match) {
+      setActiveObjectType(null)
+      return
+    }
+    let cancelled = false
+    api<{ object_type: string }>(`/api/processes/${match[1]}`)
+      .then((p) => { if (!cancelled) setActiveObjectType(p.object_type) })
+      .catch(() => { if (!cancelled) setActiveObjectType(null) })
+    return () => { cancelled = true }
+  }, [location.pathname])
+
+  const isLeafSelected = (leaf: Leaf) =>
+    leafSelected(leaf, location.pathname) ||
+    (activeObjectType !== null && leaf.to === `/documents/${activeObjectType}`)
+
   // выпадающее меню раздела при наведении в свёрнутом состоянии
   const [hoverMenu, setHoverMenu] = useState<{
     key: string
@@ -202,10 +220,11 @@ export function Layout() {
 
   useEffect(() => {
     const active = groups.find((g) =>
-      g.children.some((leaf) => leafSelected(leaf, location.pathname)),
+      g.children.some((leaf) => isLeafSelected(leaf)),
     )
     if (active) setOpen((prev) => ({ ...prev, [active.key]: true }))
-  }, [groups, location.pathname])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups, location.pathname, activeObjectType])
 
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
@@ -367,7 +386,7 @@ export function Layout() {
                         key={leaf.to}
                         component={NavLink}
                         to={leaf.to}
-                        selected={leafSelected(leaf, location.pathname)}
+                        selected={isLeafSelected(leaf)}
                         sx={{ ...itemSx, pl: 5.5, py: 0.6, color: NAV_LEAF_TEXT }}
                       >
                         <ListItemText
@@ -415,7 +434,7 @@ export function Layout() {
                         key={leaf.to}
                         component={NavLink}
                         to={leaf.to}
-                        selected={leafSelected(leaf, location.pathname)}
+                        selected={isLeafSelected(leaf)}
                         onClick={() => setHoverMenu(null)}
                         sx={{
                           color: NAV_LEAF_TEXT,

@@ -79,6 +79,26 @@ from app.schemas.routing import (
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
+async def _exchange_mode(session, entity_type: str | None) -> str:
+    """Режим справочника по настройкам обмена:
+    - "full"     — не из интеграции: полный CRUD (справочники BPM);
+    - "readonly" — только получаем из 1С (can_send=false): изменять нельзя
+      вовсе, даже активность — ею управляет синхронизация;
+    - "no_delete" — получаем и отправляем (can_send=true): создавать/менять
+      можно, но удаления нет (как в 1С — только деактивация)."""
+    if entity_type is None:
+        return "full"
+    from app.models import ExchangeSetting
+
+    row = await session.scalar(
+        select(ExchangeSetting).where(ExchangeSetting.entity_type == entity_type)
+    )
+    can_send = row.can_send if row is not None else _EXCHANGE_SEND_DEFAULT.get(
+        entity_type, True
+    )
+    return "no_delete" if can_send else "readonly"
+
+
 def _crud_router(
     *,
     model,
@@ -87,11 +107,11 @@ def _crud_router(
     update_schema,
     read_schema,
     roles: tuple[UserRole, ...] = (),
-    deletable: bool = True,
+    exchange_entity: str | None = None,
 ) -> APIRouter:
     """Однотипный CRUD: list / get / post / patch / delete.
-    deletable=False — справочник из интеграции: удаления нет (как в 1С),
-    вместо него — деактивация (active=false)."""
+    exchange_entity привязывает справочник к настройке обмена: receive-only
+    делает его полностью read-only, receive+send — без удаления."""
     sub = APIRouter(
         prefix=prefix,
         dependencies=[Depends(require_roles(*roles))],
@@ -109,8 +129,15 @@ def _crud_router(
             raise HTTPException(status.HTTP_404_NOT_FOUND)
         return obj
 
+    _READONLY_MSG = (
+        "Справочник только получается из 1С — изменение в BPM запрещено. "
+        "Данные ведутся в системе-источнике."
+    )
+
     @sub.post("", response_model=read_schema, status_code=status.HTTP_201_CREATED)
     async def create_item(payload: create_schema, session: SessionDep):  # type: ignore[valid-type]
+        if await _exchange_mode(session, exchange_entity) == "readonly":
+            raise HTTPException(status.HTTP_409_CONFLICT, _READONLY_MSG)
         obj = model(**payload.model_dump())
         session.add(obj)
         await session.commit()
@@ -119,6 +146,8 @@ def _crud_router(
 
     @sub.patch("/{item_id}", response_model=read_schema)
     async def update_item(item_id: uuid.UUID, payload: update_schema, session: SessionDep):  # type: ignore[valid-type]
+        if await _exchange_mode(session, exchange_entity) == "readonly":
+            raise HTTPException(status.HTTP_409_CONFLICT, _READONLY_MSG)
         obj = await session.get(model, item_id)
         if obj is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND)
@@ -130,11 +159,12 @@ def _crud_router(
 
     @sub.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
     async def delete_item(item_id: uuid.UUID, session: SessionDep):
-        if not deletable:
+        # удаления справочников из интеграции нет вовсе (как в 1С)
+        if await _exchange_mode(session, exchange_entity) != "full":
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                "Справочник из интеграции не удаляется. "
-                "Отметьте запись неактивной — она будет скрыта.",
+                "Удаления справочников из интеграции нет. Запись убирается "
+                "в 1С → в BPM станет неактивной и скроется.",
             )
         obj = await session.get(model, item_id)
         if obj is None:
@@ -147,18 +177,19 @@ def _crud_router(
 
 _ADMIN_ONLY: tuple[UserRole, ...] = ()  # require_roles() без ролей = только ADMIN
 
-# deletable=False — справочники-мастер из интеграции 1С/AD: удаления нет,
-# только деактивация (active=false / статус «Уволен»)
-for _model, _prefix, _c, _u, _r, _roles, _deletable in [
-    (Organization, "/organizations", OrganizationCreate, OrganizationUpdate, OrganizationRead, _ADMIN_ONLY, False),
-    (Position, "/positions", PositionCreate, PositionUpdate, PositionRead, _ADMIN_ONLY, False),
-    (Department, "/departments", DepartmentCreate, DepartmentUpdate, DepartmentRead, _ADMIN_ONLY, False),
-    (Employee, "/employees", EmployeeCreate, EmployeeUpdate, EmployeeRead, _ADMIN_ONLY, False),
-    (Employment, "/employments", EmploymentCreate, EmploymentUpdate, EmploymentRead, _ADMIN_ONLY, True),
-    (Absence, "/absences", AbsenceCreate, AbsenceUpdate, AbsenceRead, _ADMIN_ONLY, True),
-    (Project, "/projects", ProjectCreate, ProjectUpdate, ProjectRead, _ADMIN_ONLY, False),
-    (ProjectAssignment, "/project-assignments", ProjectAssignmentCreate, ProjectAssignmentUpdate, ProjectAssignmentRead, _ADMIN_ONLY, True),
-    (Substitution, "/substitutions", SubstitutionCreate, SubstitutionUpdate, SubstitutionRead, _ADMIN_ONLY, True),
+# exchange_entity привязывает справочник к настройкам обмена:
+# receive-only (can_send=false) → полностью read-only; receive+send → без
+# удаления. None — справочник BPM (замещения и т.п.), полный CRUD.
+for _model, _prefix, _c, _u, _r, _roles, _exch in [
+    (Organization, "/organizations", OrganizationCreate, OrganizationUpdate, OrganizationRead, _ADMIN_ONLY, "ORGANIZATION"),
+    (Position, "/positions", PositionCreate, PositionUpdate, PositionRead, _ADMIN_ONLY, "POSITION"),
+    (Department, "/departments", DepartmentCreate, DepartmentUpdate, DepartmentRead, _ADMIN_ONLY, "DEPARTMENT"),
+    (Employee, "/employees", EmployeeCreate, EmployeeUpdate, EmployeeRead, _ADMIN_ONLY, "EMPLOYEE"),
+    (Employment, "/employments", EmploymentCreate, EmploymentUpdate, EmploymentRead, _ADMIN_ONLY, None),
+    (Absence, "/absences", AbsenceCreate, AbsenceUpdate, AbsenceRead, _ADMIN_ONLY, "ABSENCE"),
+    (Project, "/projects", ProjectCreate, ProjectUpdate, ProjectRead, _ADMIN_ONLY, "PROJECT"),
+    (ProjectAssignment, "/project-assignments", ProjectAssignmentCreate, ProjectAssignmentUpdate, ProjectAssignmentRead, _ADMIN_ONLY, None),
+    (Substitution, "/substitutions", SubstitutionCreate, SubstitutionUpdate, SubstitutionRead, _ADMIN_ONLY, None),
 ]:
     router.include_router(
         _crud_router(
@@ -168,7 +199,7 @@ for _model, _prefix, _c, _u, _r, _roles, _deletable in [
             update_schema=_u,
             read_schema=_r,
             roles=_roles,
-            deletable=_deletable,
+            exchange_entity=_exch,
         )
     )
 
@@ -1106,6 +1137,10 @@ _EXCHANGE_DEFAULTS = [
     ("COUNTERPARTY", "Контрагенты", "BUH", True, True),
     ("CONTRACT", "Договоры", "BUH", True, True),
 ]
+
+# can_send по умолчанию — если строки обмена ещё нет в БД (fallback для
+# _exchange_mode до первого открытия страницы «Обмен с 1С»)
+_EXCHANGE_SEND_DEFAULT = {code: send for code, _n, _s, _r, send in _EXCHANGE_DEFAULTS}
 
 
 async def _ensure_exchange_defaults(session) -> None:

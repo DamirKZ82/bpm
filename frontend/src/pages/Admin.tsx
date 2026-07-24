@@ -37,8 +37,7 @@ export const ENTITIES: Record<string, EntityConfig> = {
   organizations: {
     title: 'Организации',
     endpoint: '/api/admin/organizations',
-    hint: 'Справочник из интеграции 1С — не удаляется, только деактивация',
-    canDelete: false,
+    exchangeEntity: 'ORGANIZATION',
     fields: [
       { key: 'name', label: 'Наименование', required: true },
       { key: 'bin', label: 'БИН' },
@@ -48,8 +47,8 @@ export const ENTITIES: Record<string, EntityConfig> = {
   positions: {
     title: 'Должности',
     endpoint: '/api/admin/positions',
-    hint: 'Должность = роль в маршрутах. Справочник из интеграции — не удаляется',
-    canDelete: false,
+    hint: 'Должность = роль в маршрутах согласования',
+    exchangeEntity: 'POSITION',
     fields: [
       { key: 'name', label: 'Наименование', required: true },
       { key: 'active', label: 'Активна', type: 'checkbox' },
@@ -58,8 +57,7 @@ export const ENTITIES: Record<string, EntityConfig> = {
   departments: {
     title: 'Подразделения',
     endpoint: '/api/admin/departments',
-    hint: 'Справочник из интеграции 1С — не удаляется, только деактивация',
-    canDelete: false,
+    exchangeEntity: 'DEPARTMENT',
     fields: [
       { key: 'name', label: 'Наименование', required: true },
       { key: 'organization_id', label: 'Организация', ...ORG },
@@ -70,8 +68,7 @@ export const ENTITIES: Record<string, EntityConfig> = {
   employees: {
     title: 'Сотрудники',
     endpoint: '/api/admin/employees',
-    hint: 'Из ЗУП/AD — не удаляются никогда. Уволенный → статус «Уволен»',
-    canDelete: false,
+    exchangeEntity: 'EMPLOYEE',
     fields: [
       { key: 'full_name', label: 'ФИО', required: true },
       { key: 'email', label: 'Email' },
@@ -95,6 +92,7 @@ export const ENTITIES: Record<string, EntityConfig> = {
   absences: {
     title: 'Отсутствия',
     endpoint: '/api/admin/absences',
+    exchangeEntity: 'ABSENCE',
     fields: [
       { key: 'employee_id', label: 'Сотрудник', required: true, ...EMP },
       { key: 'date_from', label: 'С', type: 'date', required: true },
@@ -116,8 +114,7 @@ export const ENTITIES: Record<string, EntityConfig> = {
   projects: {
     title: 'Проекты',
     endpoint: '/api/admin/projects',
-    hint: 'Справочник из интеграции 1С — не удаляется, только деактивация',
-    canDelete: false,
+    exchangeEntity: 'PROJECT',
     fields: [
       { key: 'name', label: 'Наименование', required: true },
       { key: 'code', label: 'Код' },

@@ -45,6 +45,15 @@ export interface EntityConfig {
   canDelete?: boolean
   canEdit?: boolean
   hint?: string
+  /** привязка к настройке обмена: если справочник только получают из 1С
+   * (can_send=false) — он полностью read-only (нельзя менять даже активность) */
+  exchangeEntity?: string
+}
+
+interface ExchangeSettingRow {
+  entity_type: string
+  can_receive: boolean
+  can_send: boolean
 }
 
 type Row = Record<string, unknown> & { id: string }
@@ -58,6 +67,18 @@ export function CrudTable({ config }: { config: EntityConfig }) {
   const [error, setError] = useState('')
   const [listError, setListError] = useState('')
   const [busy, setBusy] = useState(false)
+  // справочник «только получаем из 1С» — полностью read-only
+  const [readOnly, setReadOnly] = useState(false)
+
+  useEffect(() => {
+    if (!config.exchangeEntity) { setReadOnly(false); return }
+    api<ExchangeSettingRow[]>('/api/admin/exchange-settings')
+      .then((list) => {
+        const s = list.find((x) => x.entity_type === config.exchangeEntity)
+        setReadOnly(!!s && s.can_receive && !s.can_send)
+      })
+      .catch(() => setReadOnly(false))
+  }, [config.exchangeEntity])
 
   const reload = useCallback(() => {
     setListError('')
@@ -143,8 +164,8 @@ export function CrudTable({ config }: { config: EntityConfig }) {
     }
   }
 
-  const canEdit = config.canEdit !== false
-  const canDelete = config.canDelete !== false
+  const canEdit = config.canEdit !== false && !readOnly
+  const canDelete = config.canDelete !== false && !readOnly
   const tableFields = config.fields.filter((f) => f.inTable !== false)
   const formFields = config.fields.filter((f) => f.inForm !== false)
 
@@ -197,14 +218,23 @@ export function CrudTable({ config }: { config: EntityConfig }) {
             </Typography>
           )}
         </div>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => { setEditing({}); setError('') }}
-        >
-          Создать
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => { setEditing({}); setError('') }}
+          >
+            Создать
+          </Button>
+        )}
       </Stack>
+      {readOnly && (
+        <Alert severity="info" sx={{ mb: 1.5 }}>
+          Справочник только получается из 1С — изменение недоступно.
+          Данные (в том числе активность) ведутся в системе-источнике.
+          Режим приёма/отправки настраивается в разделе «Обмен с 1С».
+        </Alert>
+      )}
       {listError && <Alert severity="error" sx={{ mb: 1.5 }}>{listError}</Alert>}
       <Paper sx={{ height: 'calc(100vh - 170px)', minHeight: 420 }}>
         <DataGrid

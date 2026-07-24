@@ -18,6 +18,8 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { ruRU } from '@mui/x-date-pickers/locales'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
 import 'dayjs/locale/ru'
@@ -33,70 +35,67 @@ function formatDate(iso: string): string {
   return dayjs(iso).format('DD.MM.YYYY')
 }
 
-export function periodLabel(period: Period): string {
-  if (!period.from && !period.to) return 'Весь период'
+export function periodLabel(period: Period, t: TFunction): string {
+  if (!period.from && !period.to) return t('period.allTime')
   if (period.from && period.to) {
     return `${formatDate(period.from)} — ${formatDate(period.to)}`
   }
-  if (period.from) return `с ${formatDate(period.from)}`
-  return `по ${formatDate(period.to as string)}`
+  if (period.from) return `${t('period.fromShort')} ${formatDate(period.from)}`
+  return `${t('period.toShort')} ${formatDate(period.to as string)}`
 }
 
 interface Preset {
-  label: string
+  key: string
   make: () => Period
 }
 
 const iso = (d: Dayjs) => d.format('YYYY-MM-DD')
 
 const PRESETS: Preset[] = [
+  { key: 'period.today', make: () => ({ from: iso(dayjs()), to: iso(dayjs()) }) },
   {
-    label: 'Сегодня',
-    make: () => ({ from: iso(dayjs()), to: iso(dayjs()) }),
-  },
-  {
-    label: 'Эта неделя',
+    key: 'period.thisWeek',
     make: () => {
       const start = dayjs().subtract((dayjs().day() + 6) % 7, 'day')
       return { from: iso(start), to: iso(start.add(6, 'day')) }
     },
   },
   {
-    label: 'Этот месяц',
+    key: 'period.thisMonth',
     make: () => ({
       from: iso(dayjs().startOf('month')),
       to: iso(dayjs().endOf('month')),
     }),
   },
   {
-    label: 'Этот квартал',
+    key: 'period.thisQuarter',
     make: () => {
       const start = dayjs().month(Math.floor(dayjs().month() / 3) * 3).startOf('month')
       return { from: iso(start), to: iso(start.add(2, 'month').endOf('month')) }
     },
   },
   {
-    label: 'Этот год',
+    key: 'period.thisYear',
     make: () => ({
       from: iso(dayjs().startOf('year')),
       to: iso(dayjs().endOf('year')),
     }),
   },
   {
-    label: 'Прошлый месяц',
+    key: 'period.lastMonth',
     make: () => {
       const start = dayjs().subtract(1, 'month').startOf('month')
       return { from: iso(start), to: iso(start.endOf('month')) }
     },
   },
   {
-    label: 'Прошлый год',
+    key: 'period.lastYear',
     make: () => {
       const start = dayjs().subtract(1, 'year').startOf('year')
       return { from: iso(start), to: iso(start.endOf('year')) }
     },
   },
-  { label: 'Весь период', make: () => EMPTY_PERIOD },
+  { key: 'period.allTime', make: () => EMPTY_PERIOD },
 ]
 
 /** Выбор периода в стиле 1С: поле с кнопкой, окно с быстрыми периодами
@@ -110,6 +109,7 @@ export function PeriodPicker({
   onChange: (period: Period) => void
   width?: number | string
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Period>(value)
 
@@ -131,8 +131,8 @@ export function PeriodPicker({
   return (
     <>
       <TextField
-        label="Период"
-        value={periodLabel(value)}
+        label={t('doc.period')}
+        value={periodLabel(value, t)}
         onClick={openDialog}
         sx={{ width }}
         slotProps={{
@@ -150,7 +150,7 @@ export function PeriodPicker({
         }}
       />
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md">
-        <DialogTitle>Выбор периода</DialogTitle>
+        <DialogTitle>{t('period.title')}</DialogTitle>
         <DialogContent>
           <LocalizationProvider
             dateAdapter={AdapterDayjs}
@@ -161,17 +161,17 @@ export function PeriodPicker({
               <List dense sx={{ width: 170, flexShrink: 0 }}>
                 {PRESETS.map((preset) => (
                   <ListItemButton
-                    key={preset.label}
+                    key={preset.key}
                     onClick={() => setDraft(preset.make())}
                   >
-                    <ListItemText primary={preset.label} />
+                    <ListItemText primary={t(preset.key)} />
                   </ListItemButton>
                 ))}
               </List>
               <Divider orientation="vertical" flexItem />
               <div>
                 <Typography variant="subtitle2" sx={{ textAlign: 'center' }}>
-                  Начало периода
+                  {t('period.start')}
                 </Typography>
                 <DateCalendar
                   value={draft.from ? dayjs(draft.from) : null}
@@ -181,7 +181,7 @@ export function PeriodPicker({
               <Divider orientation="vertical" flexItem />
               <div>
                 <Typography variant="subtitle2" sx={{ textAlign: 'center' }}>
-                  Конец периода
+                  {t('period.end')}
                 </Typography>
                 <DateCalendar
                   value={draft.to ? dayjs(draft.to) : null}
@@ -190,15 +190,15 @@ export function PeriodPicker({
               </div>
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Выбрано: {periodLabel(draft)}
+              {t('period.selected')}: {periodLabel(draft, t)}
             </Typography>
           </LocalizationProvider>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDraft(EMPTY_PERIOD)}>Очистить</Button>
-          <Button onClick={() => setOpen(false)}>Отмена</Button>
+          <Button onClick={() => setDraft(EMPTY_PERIOD)}>{t('period.clear')}</Button>
+          <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={apply}>
-            Выбрать
+            {t('period.apply')}
           </Button>
         </DialogActions>
       </Dialog>

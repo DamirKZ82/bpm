@@ -159,7 +159,7 @@ export function DocumentsPage() {
   }
 
   const remove = async (document: DocumentItem) => {
-    if (!confirm(`Удалить черновик «${document.subject}»?`)) return
+    if (!confirm(t('doc.confirmDelete'))) return
     setListError('')
     try {
       await api(`/api/documents/${document.id}`, { method: 'DELETE' })
@@ -185,7 +185,7 @@ export function DocumentsPage() {
       p.organization_id === null ||
       p.organization_id === editing.organization_id,
   )
-  const typeName = docType?.name ?? 'Документы'
+  const typeName = docType?.name ?? t('nav.documents')
 
   return (
     <>
@@ -197,7 +197,7 @@ export function DocumentsPage() {
           {typeName}
           {isAdmin && (
             <Typography component="span" color="text.secondary" sx={{ ml: 1 }}>
-              (все)
+              ({t('doc.all')})
             </Typography>
           )}
         </Typography>
@@ -215,13 +215,12 @@ export function DocumentsPage() {
             setError('')
           }}
         >
-          Создать
+          {t('common.create')}
         </Button>
       </Stack>
       {!canCreate && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Учётная запись не сопоставлена с сотрудником — создание заявок
-          недоступно. Обратитесь к администратору.
+          {t('doc.noEmployee')}
         </Alert>
       )}
       {listError && <Alert severity="error" sx={{ mb: 2 }}>{listError}</Alert>}
@@ -249,22 +248,22 @@ export function DocumentsPage() {
           </TextField>
           <TextField
             select
-            label="Организация"
+            label={t('doc.organization')}
             value={filterOrg}
             onChange={(e) => { setFilterOrg(e.target.value); setFilterProject('') }}
           >
-            <MenuItem value="">Все</MenuItem>
+            <MenuItem value="">{t('common.all')}</MenuItem>
             {refs.organizations.map((org) => (
               <MenuItem key={org.id} value={org.id}>{org.name}</MenuItem>
             ))}
           </TextField>
           <TextField
             select
-            label="Проект"
+            label={t('doc.project')}
             value={filterProject}
             onChange={(e) => setFilterProject(e.target.value)}
           >
-            <MenuItem value="">Все</MenuItem>
+            <MenuItem value="">{t('common.all')}</MenuItem>
             {refs.projects
               .filter(
                 (p) =>
@@ -293,9 +292,9 @@ export function DocumentsPage() {
                       value={cfFilters[field.code] ?? ''}
                       onChange={(e) => setCf(field.code, e.target.value)}
                     >
-                      <MenuItem value="">Все</MenuItem>
-                      <MenuItem value="true">Да</MenuItem>
-                      <MenuItem value="false">Нет</MenuItem>
+                      <MenuItem value="">{t('common.all')}</MenuItem>
+                      <MenuItem value="true">{t('common.yes')}</MenuItem>
+                      <MenuItem value="false">{t('common.no')}</MenuItem>
                     </TextField>
                   )
                 case 'REF':
@@ -307,7 +306,7 @@ export function DocumentsPage() {
                       value={cfFilters[field.code] ?? ''}
                       onChange={(e) => setCf(field.code, e.target.value)}
                     >
-                      <MenuItem value="">Все</MenuItem>
+                      <MenuItem value="">{t('common.all')}</MenuItem>
                       {refOptions(field, refs).map((option) => (
                         <MenuItem key={option.id} value={option.id}>
                           {option.name}
@@ -320,7 +319,7 @@ export function DocumentsPage() {
                     <Stack direction="row" spacing={1} key={field.id}>
                       <TextField
                         type="date"
-                        label={`${field.name} с`}
+                        label={`${field.name} ${t('doc.dateFrom')}`}
                         value={cfFilters[`${field.code}_from`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_from`, e.target.value)}
                         sx={{ flex: 1 }}
@@ -328,7 +327,7 @@ export function DocumentsPage() {
                       />
                       <TextField
                         type="date"
-                        label="по"
+                        label={t('doc.dateTo')}
                         value={cfFilters[`${field.code}_to`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_to`, e.target.value)}
                         sx={{ flex: 1 }}
@@ -342,14 +341,14 @@ export function DocumentsPage() {
                     <Stack direction="row" spacing={1} key={field.id}>
                       <TextField
                         type="number"
-                        label={`${field.name} от`}
+                        label={`${field.name} ${t('doc.rangeFrom')}`}
                         value={cfFilters[`${field.code}_from`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_from`, e.target.value)}
                         sx={{ flex: 1 }}
                       />
                       <TextField
                         type="number"
-                        label="до"
+                        label={t('doc.rangeTo')}
                         value={cfFilters[`${field.code}_to`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_to`, e.target.value)}
                         sx={{ flex: 1 }}
@@ -377,7 +376,7 @@ export function DocumentsPage() {
                 setCfFilters({})
               }}
             >
-              Сбросить
+              {t('common.reset')}
             </Button>
           )}
         </Box>
@@ -386,7 +385,7 @@ export function DocumentsPage() {
       <Paper>
         {documents.length === 0 ? (
           <Typography color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>
-            {hasFilters ? 'По заданному отбору ничего не найдено' : 'Документов пока нет'}
+            {hasFilters ? t('doc.notFound') : t('doc.noDocs')}
           </Typography>
         ) : (
           <Table size="small">
@@ -428,7 +427,7 @@ export function DocumentsPage() {
                     {document.process ? (
                       <ProcessStatusBadge status={document.process.status} />
                     ) : (
-                      <Chip label="Черновик" size="small" variant="outlined" />
+                      <Chip label={t('doc.draft')} size="small" variant="outlined" />
                     )}
                   </TableCell>
                   <TableCell align="right">
@@ -440,20 +439,20 @@ export function DocumentsPage() {
                             variant="contained"
                             onClick={() => submitForApproval(document)}
                           >
-                            {document.process ? 'Отправить повторно' : 'На согласование'}
+                            {document.process ? t('doc.resend') : t('doc.toApproval')}
                           </Button>
                           <Button
                             size="small"
                             variant="outlined"
                             onClick={() => { setEditing(document); setError('') }}
                           >
-                            Изменить
+                            {t('common.edit')}
                           </Button>
                         </>
                       )}
                       {isMine(document) && !document.process && (
                         <Button size="small" variant="outlined" onClick={() => remove(document)}>
-                          Удалить
+                          {t('common.delete')}
                         </Button>
                       )}
                     </Stack>
@@ -468,24 +467,24 @@ export function DocumentsPage() {
       <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="md">
         <DialogTitle>
           {!editing?.id
-            ? `${typeName} — новый документ`
+            ? `${typeName} — ${t('doc.newDoc')}`
             : readOnly
-              ? `${editing.number} — ${editing.author_name ?? 'другой автор'}`
+              ? `${editing.number} — ${editing.author_name ?? ''}`
               : `${typeName} ${editing.number}`}
         </DialogTitle>
         <DialogContent>
           {/* реквизиты шапки — в один ряд */}
           <Stack direction="row" spacing={2} sx={{ mt: 1, mb: 2 }}>
             <TextField
-              label="Номер"
+              label={t('doc.number')}
               value={editing?.number ?? ''}
-              placeholder="автоматически"
+              placeholder={t('doc.numberAuto')}
               disabled
               sx={{ width: 170, flexShrink: 0 }}
               slotProps={{ inputLabel: { shrink: true } }}
             />
             <TextField
-              label="Дата"
+              label={t('doc.date')}
               type="date"
               value={editing?.date ?? today()}
               onChange={(e) => setEditing({ ...editing, date: e.target.value })}
@@ -495,7 +494,7 @@ export function DocumentsPage() {
             />
             <TextField
               select
-              label="Организация"
+              label={t('doc.organization')}
               required
               value={editing?.organization_id ?? ''}
               onChange={(e) =>
@@ -513,7 +512,7 @@ export function DocumentsPage() {
             </TextField>
             <TextField
               select
-              label="Проект"
+              label={t('doc.project')}
               required
               value={editing?.project_id ?? ''}
               onChange={(e) =>
@@ -529,14 +528,14 @@ export function DocumentsPage() {
             </TextField>
           </Stack>
           <TextField
-            label="Тема"
+            label={t('doc.subject')}
             value={editing?.subject ?? ''}
             onChange={(e) => setEditing({ ...editing, subject: e.target.value })}
             disabled={readOnly}
             sx={{ mb: 2 }}
           />
           <TextField
-            label="Содержание"
+            label={t('doc.content')}
             multiline
             minRows={4}
             value={editing?.body ?? ''}
@@ -559,7 +558,7 @@ export function DocumentsPage() {
             <>
               <Divider sx={{ my: 2 }} />
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Маршрут согласования
+                {t('doc.route')}
               </Typography>
               <RoutePreview
                 objectType={typeCode}
@@ -575,7 +574,7 @@ export function DocumentsPage() {
             </>
           ) : (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Вложения можно добавить после сохранения
+              {t('doc.attachAfterSave')}
             </Typography>
           )}
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
@@ -587,10 +586,10 @@ export function DocumentsPage() {
               onClick={() => window.open(`/print/${editing.id}`, '_blank')}
               sx={{ mr: 'auto' }}
             >
-              Печать
+              {t('doc.print')}
             </Button>
           )}
-          <Button onClick={() => setEditing(null)}>Закрыть</Button>
+          <Button onClick={() => setEditing(null)}>{t('common.close')}</Button>
           {!readOnly && (
             <Button
               variant="contained"
@@ -603,7 +602,7 @@ export function DocumentsPage() {
                 !editing?.project_id
               }
             >
-              Сохранить
+              {t('common.save')}
             </Button>
           )}
         </DialogActions>

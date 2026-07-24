@@ -45,6 +45,18 @@ const MANDATORY = [
   { value: 'SKIP_IF_NO_ASSIGNEE', label: 'Пропустить, если нет исполнителя' },
 ]
 
+const CONDITION_OPS = [
+  { value: 'gt', label: '>' },
+  { value: 'ge', label: '≥' },
+  { value: 'lt', label: '<' },
+  { value: 'le', label: '≤' },
+  { value: 'eq', label: '=' },
+  { value: 'ne', label: '≠' },
+]
+
+// поля, по которым можно строить условие (числовые/строковые/булевы)
+const CONDITION_FIELD_TYPES = new Set(['NUMBER', 'MONEY', 'STRING', 'BOOLEAN'])
+
 const label = (options: { value: string; label: string }[], value: string) =>
   options.find((o) => o.value === value)?.label ?? value
 
@@ -56,9 +68,16 @@ interface Participant {
   mandatory: string
 }
 
+interface StageCondition {
+  field: string
+  op: string
+  value: string | number
+}
+
 interface Stage {
   stage_type: string
   quorum_count: number | null
+  condition?: StageCondition | null
   participants: Participant[]
 }
 
@@ -88,6 +107,7 @@ const emptyParticipant = (): Participant => ({
 const emptyStage = (): Stage => ({
   stage_type: 'SEQUENTIAL',
   quorum_count: null,
+  condition: null,
   participants: [emptyParticipant()],
 })
 
@@ -125,6 +145,30 @@ export function RouteMatrixPage() {
 
   const positionName = (id: string | null) =>
     positions.find((p) => p.id === id)?.name ?? '?'
+
+  // поля выбранного вида документа, пригодные для условия
+  const conditionFields = (typeCode: string) =>
+    (docTypes.find((t) => t.code === typeCode)?.fields ?? []).filter((f) =>
+      CONDITION_FIELD_TYPES.has(f.field_type),
+    )
+
+  const conditionLabel = (typeCode: string, c: StageCondition) => {
+    const fieldName =
+      conditionFields(typeCode).find((f) => f.code === c.field)?.name ?? c.field
+    const op = CONDITION_OPS.find((o) => o.value === c.op)?.label ?? c.op
+    return `если ${fieldName} ${op} ${c.value}`
+  }
+
+  const setCondition = (stageIndex: number, next: Partial<StageCondition> | null) => {
+    if (!editing) return
+    const stage = editing.stages[stageIndex]
+    if (next === null) {
+      patchStage(stageIndex, { condition: null })
+      return
+    }
+    const base: StageCondition = stage.condition ?? { field: '', op: 'gt', value: '' }
+    patchStage(stageIndex, { condition: { ...base, ...next } })
+  }
 
   const participantLabel = (p: Participant) => {
     const base = p.resolver_type.startsWith('POSITION')
@@ -314,6 +358,11 @@ export function RouteMatrixPage() {
                   </Typography>
                   <Typography variant="body2">
                     {stage.participants.map(participantLabel).join('; ')}
+                    {stage.condition?.field && (
+                      <Typography component="span" variant="body2" color="warning.main">
+                        {' '}· {conditionLabel(route.object_type, stage.condition)}
+                      </Typography>
+                    )}
                   </Typography>
                 </Stack>
               ))}
@@ -467,6 +516,65 @@ export function RouteMatrixPage() {
                         </IconButton>
                       </span>
                     </Tooltip>
+                  </Stack>
+
+                  {/* условие включения этапа (по полю документа) */}
+                  <Stack
+                    direction="row"
+                    spacing={1.5}
+                    sx={{ mb: 1.5, alignItems: 'center', flexWrap: 'wrap' }}
+                  >
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ width: 70, flexShrink: 0 }}
+                    >
+                      Условие
+                    </Typography>
+                    <TextField
+                      select
+                      label="Поле"
+                      size="small"
+                      sx={{ width: 200, flexShrink: 0 }}
+                      value={stage.condition?.field ?? ''}
+                      onChange={(e) =>
+                        setCondition(
+                          stageIndex,
+                          e.target.value ? { field: e.target.value } : null,
+                        )
+                      }
+                    >
+                      <MenuItem value="">— всегда включён —</MenuItem>
+                      {conditionFields(editing.object_type).map((f) => (
+                        <MenuItem key={f.code} value={f.code}>{f.name}</MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      select
+                      label="Оператор"
+                      size="small"
+                      sx={{ width: 120, flexShrink: 0 }}
+                      disabled={!stage.condition?.field}
+                      value={stage.condition?.op ?? 'gt'}
+                      onChange={(e) => setCondition(stageIndex, { op: e.target.value })}
+                    >
+                      {CONDITION_OPS.map((o) => (
+                        <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      label="Значение"
+                      size="small"
+                      sx={{ width: 160, flexShrink: 0 }}
+                      disabled={!stage.condition?.field}
+                      value={stage.condition?.value ?? ''}
+                      onChange={(e) => setCondition(stageIndex, { value: e.target.value })}
+                    />
+                    {stage.condition?.field && (
+                      <Typography variant="caption" color="text.secondary">
+                        этап включается только при истинном условии
+                      </Typography>
+                    )}
                   </Stack>
 
                   {stage.participants.map((participant, participantIndex) => (

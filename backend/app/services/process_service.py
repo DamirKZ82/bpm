@@ -257,12 +257,16 @@ async def start_process(
     project_id: uuid.UUID | None,
     ip: str | None,
 ) -> ProcessInstance:
+    # значения полей документа — для условных этапов маршрута
+    document = await session.get(Document, object_id)
+    field_values = dict(document.custom_fields or {}) if document else {}
     stages = await build_route(
         session,
         object_type=object_type,
         organization_id=organization_id,
         project_id=project_id,
         initiator_employee_id=initiator.employee_id,
+        field_values=field_values,
     )
 
     process = ProcessInstance(

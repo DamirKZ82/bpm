@@ -1,8 +1,10 @@
 """Матрица маршрутов и вспомогательные назначения (ТЗ §4, §9.2)."""
 import uuid
 from datetime import date
+from typing import Any
 
 from sqlalchemy import ForeignKey, Index, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, UUIDPKMixin
@@ -58,6 +60,10 @@ class RouteRule(UUIDPKMixin, Base):
     position_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("positions.id"))
     stage_type: Mapped[StageType] = mapped_column(default=StageType.SEQUENTIAL)
     quorum_count: Mapped[int | None]
+    # условие включения этапа: {"field": <код поля>, "op": gt|ge|lt|le|eq|ne,
+    # "value": <число|строка>}; NULL = этап безусловный (одинаково у всех
+    # правил этапа)
+    condition: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     deadline_hours: Mapped[int | None]
     mandatory: Mapped[RuleMandatory] = mapped_column(default=RuleMandatory.REQUIRED)
     priority: Mapped[int]

@@ -302,9 +302,22 @@ class MatrixParticipant(BaseModel):
         return self
 
 
+class StageCondition(BaseModel):
+    field: str  # код настраиваемого поля документа
+    op: str     # gt | ge | lt | le | eq | ne
+    value: str | float
+
+    @model_validator(mode="after")
+    def check_op(self):
+        if self.op not in {"gt", "ge", "lt", "le", "eq", "ne"}:
+            raise ValueError(f"Неизвестный оператор условия: {self.op}")
+        return self
+
+
 class MatrixStage(BaseModel):
     stage_type: StageType = StageType.SEQUENTIAL
     quorum_count: int | None = None
+    condition: StageCondition | None = None
     participants: list[MatrixParticipant] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -382,6 +395,7 @@ async def list_matrix_routes(session: SessionDep):
             {
                 "stage_type": rule.stage_type,
                 "quorum_count": rule.quorum_count,
+                "condition": rule.condition,
                 "participants": [],
             },
         )
@@ -434,6 +448,7 @@ async def save_matrix_route(payload: MatrixRoute, session: SessionDep):
         ),
     )
     for stage_index, stage in enumerate(payload.stages, start=1):
+        condition = stage.condition.model_dump() if stage.condition else None
         for participant_index, participant in enumerate(stage.participants, start=1):
             session.add(
                 RouteRule(
@@ -447,6 +462,7 @@ async def save_matrix_route(payload: MatrixRoute, session: SessionDep):
                     position_id=participant.position_id,
                     stage_type=stage.stage_type,
                     quorum_count=stage.quorum_count,
+                    condition=condition,
                     deadline_hours=participant.deadline_hours,
                     mandatory=participant.mandatory,
                     priority=payload.priority,

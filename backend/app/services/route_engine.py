@@ -32,6 +32,38 @@ class RouteError(Exception):
     """Ошибка расчёта маршрута — запуск процесса блокируется (ТЗ §5.1 шаг 5)."""
 
 
+def evaluate_condition(condition: dict | None, values: dict) -> bool:
+    """Условие включения этапа. Пусто → этап безусловный. Числовые
+    сравнения (gt/ge/lt/le) при отсутствии/нечисловом значении дают False
+    (этап не включается); eq/ne сравнивают как есть."""
+    if not condition:
+        return True
+    field = condition.get("field")
+    op = condition.get("op")
+    target = condition.get("value")
+    if not field or not op:
+        return True
+    actual = values.get(field)
+    if op == "eq":
+        return str(actual) == str(target)
+    if op == "ne":
+        return str(actual) != str(target)
+    try:
+        left = float(actual)
+        right = float(target)
+    except (TypeError, ValueError):
+        return False
+    if op == "gt":
+        return left > right
+    if op == "ge":
+        return left >= right
+    if op == "lt":
+        return left < right
+    if op == "le":
+        return left <= right
+    return True
+
+
 @dataclass
 class ResolvedAssignee:
     employee_id: str
@@ -58,6 +90,7 @@ class RouteStage:
     stage_no: int
     stage_type: str
     quorum_count: int | None
+    condition: dict | None = None
     slots: list[RouteSlot] = field(default_factory=list)
 
 
@@ -72,7 +105,11 @@ async def build_route(
     organization_id: uuid.UUID,
     project_id: uuid.UUID | None,
     initiator_employee_id: uuid.UUID,
+    field_values: dict | None = None,
 ) -> list[RouteStage]:
+    """field_values — значения полей документа для условных этапов
+    (None у тестировщика матрицы: условия не проверяются, показываются все
+    этапы)."""
     today = date.today()
 
     rules = (
@@ -106,6 +143,21 @@ async def build_route(
     winning_priority = min(rule.priority for rule in rules)
     rules = [rule for rule in rules if rule.priority == winning_priority]
 
+    # условные этапы: если значения полей известны (реальный запуск),
+    # этапы с невыполненным условием исключаются целиком
+    if field_values is not None:
+        skipped_stages = {
+            rule.stage_no
+            for rule in rules
+            if rule.condition and not evaluate_condition(rule.condition, field_values)
+        }
+        rules = [rule for rule in rules if rule.stage_no not in skipped_stages]
+        if not rules:
+            raise RouteError(
+                "После применения условий этапов маршрут пуст — "
+                "нет ни одного применимого этапа"
+            )
+
     position_names = dict(
         (
             await session.execute(
@@ -124,6 +176,7 @@ async def build_route(
                 stage_no=rule.stage_no,
                 stage_type=rule.stage_type.value,
                 quorum_count=rule.quorum_count,
+                condition=rule.condition,
             ),
         )
         assignees = await _resolve_rule(

@@ -101,6 +101,19 @@ export function RoutePreview({
                   }
                 />
               </Stack>
+              {stage.condition?.field && (
+                <Chip
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                  sx={{ mb: 0.75 }}
+                  label={`если ${stage.condition.field} ${
+                    { gt: '>', ge: '≥', lt: '<', le: '≤', eq: '=', ne: '≠' }[
+                      stage.condition.op
+                    ] ?? stage.condition.op
+                  } ${stage.condition.value}`}
+                />
+              )}
               {stage.slots.map((slot) =>
                 slot.skipped ? (
                   <Typography

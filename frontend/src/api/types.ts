@@ -155,6 +155,7 @@ export interface RouteStageSnapshot {
   stage_no: number
   stage_type: string
   quorum_count: number | null
+  condition?: { field: string; op: string; value: string | number } | null
   slots: RouteSlotSnapshot[]
 }
 

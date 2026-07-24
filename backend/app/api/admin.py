@@ -535,10 +535,19 @@ _FIELD_TYPES = {t.value for t in FieldType}
 _REF_TARGETS = {t.value for t in RefTarget}
 
 
+def _clean_i18n(data: dict[str, str] | None) -> dict[str, str] | None:
+    """Оставляем только непустые переводы; пусто → None."""
+    if not data:
+        return None
+    cleaned = {k: v.strip() for k, v in data.items() if v and v.strip()}
+    return cleaned or None
+
+
 class TypeFieldIn(BaseModel):
     id: uuid.UUID | None = None
     code: str = Field(min_length=1, max_length=50, pattern=r"^[a-z0-9_]+$")
     name: str = Field(min_length=1, max_length=200)
+    name_i18n: dict[str, str] | None = None  # переводы названия поля
     field_type: str
     ref_target: str | None = None
     dictionary_id: uuid.UUID | None = None
@@ -561,6 +570,7 @@ class TypeFieldIn(BaseModel):
 
 class DocumentTypeIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
+    name_i18n: dict[str, str] | None = None  # переводы названия вида
     prefix: str = Field(min_length=1, max_length=10)
     active: bool = True
     fields: list[TypeFieldIn] = []
@@ -586,6 +596,7 @@ class DocumentTypeRead(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    name_i18n: dict[str, str] | None = None
     prefix: str
     is_system: bool
     active: bool
@@ -634,6 +645,7 @@ async def _apply_fields(
             row = existing[field.id]
             row.code = field.code
             row.name = field.name
+            row.name_i18n = _clean_i18n(field.name_i18n)
             row.field_type = field.field_type
             row.ref_target = field.ref_target
             row.dictionary_id = field.dictionary_id
@@ -646,6 +658,7 @@ async def _apply_fields(
                     document_type_id=doc_type.id,
                     code=field.code,
                     name=field.name,
+                    name_i18n=_clean_i18n(field.name_i18n),
                     field_type=field.field_type,
                     ref_target=field.ref_target,
                     dictionary_id=field.dictionary_id,
@@ -665,6 +678,7 @@ async def create_document_type(payload: DocumentTypeIn, session: SessionDep):
     doc_type = DocumentType(
         code=f"DOC_{uuid.uuid4().hex[:8].upper()}",
         name=payload.name,
+        name_i18n=_clean_i18n(payload.name_i18n),
         prefix=payload.prefix,
         active=payload.active,
     )
@@ -683,6 +697,7 @@ async def update_document_type(
     if doc_type is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     doc_type.name = payload.name
+    doc_type.name_i18n = _clean_i18n(payload.name_i18n)
     doc_type.prefix = payload.prefix
     doc_type.active = payload.active
     await _apply_fields(session, doc_type, payload.fields)

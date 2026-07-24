@@ -85,6 +85,7 @@ class TypeFieldRef(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    name_i18n: dict[str, str] | None = None
     field_type: str
     ref_target: str | None
     dictionary_id: uuid.UUID | None
@@ -98,6 +99,7 @@ class DocumentTypeRef(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    name_i18n: dict[str, str] | None = None
     prefix: str
     is_system: bool
     fields: list[TypeFieldRef] = []
@@ -134,6 +136,7 @@ async def ref_document_types(user: CurrentUser, session: SessionDep):
 class FrequentType(BaseModel):
     code: str
     name: str
+    name_i18n: dict[str, str] | None = None
     count: int
 
 
@@ -159,7 +162,10 @@ async def frequent_types(user: CurrentUser, session: SessionDep, limit: int = 4)
     )
     ranked = sorted(types, key=lambda t: -counts.get(t.code, 0))
     return [
-        FrequentType(code=t.code, name=t.name, count=counts.get(t.code, 0))
+        FrequentType(
+            code=t.code, name=t.name, name_i18n=t.name_i18n,
+            count=counts.get(t.code, 0),
+        )
         for t in ranked[:limit]
     ]
 

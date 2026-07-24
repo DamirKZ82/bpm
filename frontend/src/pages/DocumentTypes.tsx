@@ -42,16 +42,25 @@ interface FieldRow {
   id?: string
   code: string
   name: string
+  name_i18n?: Record<string, string> | null
   field_type: string
   ref_target: string | null
   dictionary_id: string | null
   required: boolean
 }
 
+// языки перевода названий (основное «Название» — запасной вариант)
+const I18N_LANGS: [string, string][] = [
+  ['uz', 'O‘zbekcha'],
+  ['ru', 'Русский'],
+  ['en', 'English'],
+]
+
 interface DocType {
   id: string
   code: string
   name: string
+  name_i18n?: Record<string, string> | null
   prefix: string
   is_system: boolean
   active: boolean
@@ -95,6 +104,7 @@ export function DocumentTypesPage() {
     try {
       const body = {
         name: editing.name,
+        name_i18n: editing.name_i18n ?? null,
         prefix: editing.prefix,
         active: editing.active,
         fields: editing.fields,
@@ -130,6 +140,18 @@ export function DocumentTypesPage() {
       ...editing,
       fields: editing.fields.map((f, i) => (i === index ? { ...f, ...patch } : f)),
     })
+  }
+
+  const setTypeI18n = (lang: string, val: string) => {
+    if (!editing) return
+    setEditing({
+      ...editing,
+      name_i18n: { ...(editing.name_i18n || {}), [lang]: val },
+    })
+  }
+  const setFieldI18n = (index: number, lang: string, val: string) => {
+    const f = editing?.fields[index]
+    patchField(index, { name_i18n: { ...(f?.name_i18n || {}), [lang]: val } })
   }
 
   if (types === null) return null
@@ -254,6 +276,23 @@ export function DocumentTypesPage() {
                 />
               </Stack>
 
+              {/* переводы названия вида (если пусто — берётся «Название») */}
+              <Typography variant="caption" color="text.secondary">
+                Переводы названия (если язык не заполнен — показывается «Название»)
+              </Typography>
+              <Stack direction="row" spacing={2} sx={{ mt: 0.5, mb: 2 }}>
+                {I18N_LANGS.map(([lang, label]) => (
+                  <TextField
+                    key={lang}
+                    label={label}
+                    size="small"
+                    sx={{ flex: 1 }}
+                    value={editing.name_i18n?.[lang] ?? ''}
+                    onChange={(e) => setTypeI18n(lang, e.target.value)}
+                  />
+                ))}
+              </Stack>
+
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
                 Дополнительные поля
               </Typography>
@@ -320,6 +359,19 @@ export function DocumentTypesPage() {
                         <DeleteOutlinedIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
+                  </Stack>
+                  {/* переводы названия поля */}
+                  <Stack direction="row" spacing={1.5} sx={{ mt: 1.5 }}>
+                    {I18N_LANGS.map(([lang, label]) => (
+                      <TextField
+                        key={lang}
+                        label={label}
+                        size="small"
+                        sx={{ flex: 1 }}
+                        value={field.name_i18n?.[lang] ?? ''}
+                        onChange={(e) => setFieldI18n(index, lang, e.target.value)}
+                      />
+                    ))}
                   </Stack>
                   {field.field_type === 'REF' && (
                     <Stack direction="row" spacing={1.5} sx={{ mt: 1.5 }}>

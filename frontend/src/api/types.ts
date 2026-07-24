@@ -50,6 +50,7 @@ export interface TypeField {
   id: string
   code: string
   name: string
+  name_i18n?: Record<string, string> | null
   field_type: string
   ref_target: string | null
   dictionary_id: string | null
@@ -61,6 +62,7 @@ export interface DocumentTypeRef {
   id: string
   code: string
   name: string
+  name_i18n?: Record<string, string> | null
   prefix: string
   is_system: boolean
   fields: TypeField[]

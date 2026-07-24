@@ -7,8 +7,10 @@
 """
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import ForeignKey, String, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, UUIDPKMixin, utcnow
@@ -18,7 +20,9 @@ class DocumentType(UUIDPKMixin, Base):
     __tablename__ = "document_types"
 
     code: Mapped[str] = mapped_column(String(50), unique=True)
-    name: Mapped[str] = mapped_column(String(200))
+    name: Mapped[str] = mapped_column(String(200))  # основное название (fallback)
+    # переводы названия по языкам: {"uz": "...", "en": "..."}
+    name_i18n: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     prefix: Mapped[str] = mapped_column(String(10))  # префикс нумерации: СЗ, ЗП…
     is_system: Mapped[bool] = mapped_column(default=False)
     active: Mapped[bool] = mapped_column(default=True)
@@ -43,6 +47,7 @@ class DocumentTypeField(UUIDPKMixin, Base):
     )
     code: Mapped[str] = mapped_column(String(50))  # ключ в custom_fields
     name: Mapped[str] = mapped_column(String(200))
+    name_i18n: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # переводы
     field_type: Mapped[str] = mapped_column(String(20))
     ref_target: Mapped[str | None] = mapped_column(String(20))
     dictionary_id: Mapped[uuid.UUID | None] = mapped_column(

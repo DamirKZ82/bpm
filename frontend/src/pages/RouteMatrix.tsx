@@ -17,6 +17,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
 import { HelpButton } from '../components/HelpButton'
+import { useLocalizeName } from '../i18n/localize'
 import type { DocumentTypeRef, OrganizationRef, ProjectRef } from '../api/types'
 
 const RESOLVER_TYPES = [
@@ -119,6 +120,7 @@ const contextOf = (route: Route) => ({
 })
 
 export function RouteMatrixPage() {
+  const localizeName = useLocalizeName()
   const [routes, setRoutes] = useState<Route[] | null>(null)
   const [docTypes, setDocTypes] = useState<DocumentTypeRef[]>([])
   const [positions, setPositions] = useState<PositionRef[]>([])
@@ -142,7 +144,10 @@ export function RouteMatrixPage() {
     api<ProjectRef[]>('/api/refs/projects').then(setProjects)
   }, [reload])
 
-  const OBJECT_TYPES = docTypes.map((t) => ({ value: t.code, label: t.name }))
+  const OBJECT_TYPES = docTypes.map((t) => ({
+    value: t.code,
+    label: localizeName(t.name, t.name_i18n),
+  }))
 
   const positionName = (id: string | null) =>
     positions.find((p) => p.id === id)?.name ?? '?'
@@ -154,8 +159,8 @@ export function RouteMatrixPage() {
     )
 
   const conditionLabel = (typeCode: string, c: StageCondition) => {
-    const fieldName =
-      conditionFields(typeCode).find((f) => f.code === c.field)?.name ?? c.field
+    const field = conditionFields(typeCode).find((f) => f.code === c.field)
+    const fieldName = field ? localizeName(field.name, field.name_i18n) : c.field
     const op = CONDITION_OPS.find((o) => o.value === c.op)?.label ?? c.op
     return `если ${fieldName} ${op} ${c.value}`
   }
@@ -550,7 +555,9 @@ export function RouteMatrixPage() {
                     >
                       <MenuItem value="">— всегда включён —</MenuItem>
                       {conditionFields(editing.object_type).map((f) => (
-                        <MenuItem key={f.code} value={f.code}>{f.name}</MenuItem>
+                        <MenuItem key={f.code} value={f.code}>
+                          {localizeName(f.name, f.name_i18n)}
+                        </MenuItem>
                       ))}
                     </TextField>
                     <TextField

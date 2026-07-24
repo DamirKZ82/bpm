@@ -17,10 +17,12 @@ import Typography from '@mui/material/Typography'
 import type { SvgIconComponent } from '@mui/icons-material'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api/client'
+import { useLocalizeName } from '../i18n/localize'
 
 interface FrequentType {
   code: string
   name: string
+  name_i18n?: Record<string, string> | null
   count: number
 }
 
@@ -45,6 +47,7 @@ function iconFor(code: string): SvgIconComponent {
 /** Быстрый запуск: создание самых частых видов документов в один клик. */
 export function QuickCreate({ canCreate }: { canCreate: boolean }) {
   const { t } = useTranslation()
+  const localizeName = useLocalizeName()
   const navigate = useNavigate()
   const [types, setTypes] = useState<FrequentType[]>([])
 
@@ -104,7 +107,7 @@ export function QuickCreate({ canCreate }: { canCreate: boolean }) {
                 </Box>
                 <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
-                    {type.name}
+                    {localizeName(type.name, type.name_i18n)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {t('dashboard.createNew')}

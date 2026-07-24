@@ -96,7 +96,7 @@ const itemSx = {
 
 export function Layout() {
   const { user, loading, logout } = useAuth()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { mode, locale, setMode, setLocale } = usePreferences()
   const location = useLocation()
   const navigate = useNavigate()
@@ -143,7 +143,8 @@ export function Layout() {
         children: docTypes.length
           ? docTypes.map((dt) => ({
               to: `/documents/${dt.code}`,
-              label: dt.name,  // название вида — пользовательские данные
+              // название вида — данные; берём перевод по текущему языку
+              label: dt.name_i18n?.[i18n.language] || dt.name,
             }))
           : [{ to: '/documents/MEMO', label: t('nav.documents') }],
       },
@@ -178,7 +179,7 @@ export function Layout() {
       })
     }
     return result
-  }, [isAdmin, isMatrixEditor, docTypes, t])
+  }, [isAdmin, isMatrixEditor, docTypes, t, i18n.language])
 
   const [open, setOpen] = useState<Record<string, boolean>>({ documents: true })
 

@@ -5,6 +5,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import { api } from '../api/client'
+import { useLocalizeName } from '../i18n/localize'
 import { InfoCell, InfoGrid } from './InfoGrid'
 import type {
   DictionaryRef,
@@ -95,6 +96,7 @@ export function CustomFieldInputs({
   disabled: boolean
   refs: RefsData
 }) {
+  const localizeName = useLocalizeName()
   if (fields.length === 0) return null
   const set = (code: string, value: unknown) => onChange({ ...values, [code]: value })
 
@@ -122,7 +124,7 @@ export function CustomFieldInputs({
                     onChange={(e) => set(field.code, e.target.checked)}
                   />
                 }
-                label={field.name}
+                label={localizeName(field.name, field.name_i18n)}
               />
             )
           case 'REF':
@@ -130,7 +132,7 @@ export function CustomFieldInputs({
               <TextField
                 key={field.id}
                 select
-                label={field.name}
+                label={localizeName(field.name, field.name_i18n)}
                 required={field.required}
                 disabled={disabled}
                 value={value == null ? '' : String(value)}
@@ -148,7 +150,7 @@ export function CustomFieldInputs({
             return (
               <TextField
                 key={field.id}
-                label={field.name}
+                label={localizeName(field.name, field.name_i18n)}
                 required={field.required}
                 disabled={disabled}
                 multiline
@@ -162,7 +164,7 @@ export function CustomFieldInputs({
             return (
               <TextField
                 key={field.id}
-                label={field.name}
+                label={localizeName(field.name, field.name_i18n)}
                 required={field.required}
                 disabled={disabled}
                 type={
@@ -197,13 +199,14 @@ export function CustomFieldValues({
   values: Record<string, unknown>
   refs: RefsData
 }) {
+  const localizeName = useLocalizeName()
   if (fields.length === 0) return null
   return (
     <InfoGrid>
       {fields.map((field) => (
         <InfoCell
           key={field.id}
-          label={field.name}
+          label={localizeName(field.name, field.name_i18n)}
           value={customFieldDisplay(field, values[field.code], refs)}
           span={field.field_type === 'TEXT'}
         />

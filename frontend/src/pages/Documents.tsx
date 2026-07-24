@@ -22,6 +22,7 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
+import { useLocalizeName } from '../i18n/localize'
 import { ApiError, api } from '../api/client'
 import type { DocumentItem, DocumentTypeRef } from '../api/types'
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
@@ -46,6 +47,7 @@ export function DocumentsPage() {
   const { typeCode = 'MEMO' } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const { t } = useTranslation()
+  const localizeName = useLocalizeName()
   const { user } = useAuth()
   const refs = useRefsData(true)
   const [docTypes, setDocTypes] = useState<DocumentTypeRef[]>([])
@@ -185,7 +187,9 @@ export function DocumentsPage() {
       p.organization_id === null ||
       p.organization_id === editing.organization_id,
   )
-  const typeName = docType?.name ?? t('nav.documents')
+  const typeName = docType
+    ? localizeName(docType.name, docType.name_i18n)
+    : t('nav.documents')
 
   return (
     <>
@@ -288,7 +292,7 @@ export function DocumentsPage() {
                     <TextField
                       key={field.id}
                       select
-                      label={field.name}
+                      label={localizeName(field.name, field.name_i18n)}
                       value={cfFilters[field.code] ?? ''}
                       onChange={(e) => setCf(field.code, e.target.value)}
                     >
@@ -302,7 +306,7 @@ export function DocumentsPage() {
                     <TextField
                       key={field.id}
                       select
-                      label={field.name}
+                      label={localizeName(field.name, field.name_i18n)}
                       value={cfFilters[field.code] ?? ''}
                       onChange={(e) => setCf(field.code, e.target.value)}
                     >
@@ -319,7 +323,7 @@ export function DocumentsPage() {
                     <Stack direction="row" spacing={1} key={field.id}>
                       <TextField
                         type="date"
-                        label={`${field.name} ${t('doc.dateFrom')}`}
+                        label={`${localizeName(field.name, field.name_i18n)} ${t('doc.dateFrom')}`}
                         value={cfFilters[`${field.code}_from`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_from`, e.target.value)}
                         sx={{ flex: 1 }}
@@ -341,7 +345,7 @@ export function DocumentsPage() {
                     <Stack direction="row" spacing={1} key={field.id}>
                       <TextField
                         type="number"
-                        label={`${field.name} ${t('doc.rangeFrom')}`}
+                        label={`${localizeName(field.name, field.name_i18n)} ${t('doc.rangeFrom')}`}
                         value={cfFilters[`${field.code}_from`] ?? ''}
                         onChange={(e) => setCf(`${field.code}_from`, e.target.value)}
                         sx={{ flex: 1 }}
@@ -359,7 +363,7 @@ export function DocumentsPage() {
                   return (
                     <TextField
                       key={field.id}
-                      label={field.name}
+                      label={localizeName(field.name, field.name_i18n)}
                       value={cfFilters[field.code] ?? ''}
                       onChange={(e) => setCf(field.code, e.target.value)}
                     />

@@ -338,6 +338,11 @@ export function ProcessPage() {
                               {' '}(замещение)
                             </Typography>
                           )}
+                          {task.escalated_at && task.status === 'ACTIVE' && (
+                            <Typography component="span" variant="body2" color="error.main">
+                              {' '}· просрочено, эскалировано
+                            </Typography>
+                          )}
                         </Typography>
                         {task.comment && (
                           <Typography variant="body2" color="text.secondary">

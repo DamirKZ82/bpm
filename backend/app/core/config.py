@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     workers_enabled: bool = True  # фоновые воркеры доставки, Telegram, IMAP
 
+    # Авто-эскалация просроченных задач: по истечении срока + grace задача
+    # эскалируется администраторам, исполнителю повторно шлётся напоминание
+    escalation_grace_hours: int = 0      # 0 = эскалировать сразу по просрочке
+    escalation_check_seconds: int = 300  # период опроса воркером
+
     @property
     def imap_login(self) -> str:
         return self.imap_user or self.smtp_user

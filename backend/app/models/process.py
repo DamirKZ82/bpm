@@ -54,6 +54,10 @@ class Task(UUIDPKMixin, Base):
     result: Mapped[TaskResult | None]
     comment: Mapped[str | None] = mapped_column(Text)
     due_at: Mapped[datetime | None]
+    # момент активации — для аналитики времени на этапе (process mining)
+    activated_at: Mapped[datetime | None]
+    # момент эскалации по просрочке (однократно, чтобы не спамить)
+    escalated_at: Mapped[datetime | None]
     completed_at: Mapped[datetime | None]
 
 

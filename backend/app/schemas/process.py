@@ -90,6 +90,7 @@ class TaskRead(BaseModel):
     result: TaskResult | None
     comment: str | None
     due_at: datetime | None
+    escalated_at: datetime | None = None
     completed_at: datetime | None
 
 

@@ -12,9 +12,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models import (
     AuditLog,
     Document,
+    Employee,
     Notification,
     ProcessInstance,
     Task,
@@ -26,6 +28,7 @@ from app.models.enums import (
     TaskKind,
     TaskResult,
     TaskStatus,
+    UserRole,
     UserStatus,
 )
 from app.services.route_engine import RouteStage, build_route, route_to_snapshot
@@ -518,6 +521,77 @@ async def resubmit_process(
     return process
 
 
+async def escalate_overdue(session: AsyncSession) -> int:
+    """Эскалация просроченных активных задач: администраторам и повторно
+    исполнителю. Однократно на задачу (метка escalated_at). Возвращает
+    число эскалированных. Когда появятся руководители подразделений из
+    ЗУП — цель эскалации сменится с админов на непосредственного
+    руководителя исполнителя."""
+    now = utcnow()
+    threshold = now - timedelta(hours=settings.escalation_grace_hours)
+    tasks = list(
+        await session.scalars(
+            select(Task).where(
+                Task.status == TaskStatus.ACTIVE,
+                Task.due_at.is_not(None),
+                Task.due_at < threshold,
+                Task.escalated_at.is_(None),
+            )
+        )
+    )
+    if not tasks:
+        return 0
+
+    admin_ids = list(
+        await session.scalars(
+            select(User.id).where(
+                User.roles.contains([UserRole.ADMIN.value]),
+                User.status == UserStatus.ACTIVE,
+            )
+        )
+    )
+    for task in tasks:
+        task.escalated_at = now
+        process = await session.get(ProcessInstance, task.process_id)
+        if process is None:
+            continue
+        assignee_name = await session.scalar(
+            select(Employee.full_name).where(Employee.id == task.assignee_id)
+        )
+        assignee_user_ids = list(
+            await session.scalars(
+                select(User.id).where(
+                    User.employee_id == task.assignee_id,
+                    User.status == UserStatus.ACTIVE,
+                )
+            )
+        )
+        recipients = list({*admin_ids, *assignee_user_ids})
+        label = await _document_label(session, process)
+        await _notify_users(
+            session,
+            recipients,
+            title=f"Просрочено согласование: {label}",
+            body=(
+                f"Задача исполнителя {assignee_name or '—'} просрочена "
+                f"(срок {task.due_at:%d.%m.%Y %H:%M})."
+            ),
+            link=f"/process/{process.id}",
+        )
+        await _audit(
+            session,
+            process_id=process.id,
+            task_id=task.id,
+            action="TASK_ESCALATED",
+            payload={
+                "assignee": assignee_name,
+                "due_at": task.due_at.isoformat() if task.due_at else None,
+            },
+        )
+    await session.commit()
+    return len(tasks)
+
+
 async def cancel_process(
     session: AsyncSession, *, process: ProcessInstance, user: User, ip: str | None
 ) -> ProcessInstance:
@@ -748,6 +822,7 @@ def _activate_tasks(stage_meta: dict, stage_tasks: list[Task]) -> list[Task]:
     for task in stage_tasks:
         if task.status == TaskStatus.PENDING and _slot_key(task) in target_slots:
             task.status = TaskStatus.ACTIVE
+            task.activated_at = utcnow()
             hours = deadline_by_slot.get(_slot_key(task))
             if hours:
                 task.due_at = utcnow() + timedelta(hours=hours)

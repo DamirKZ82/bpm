@@ -9,6 +9,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   TASK_RETURNED: 'Возвращено на доработку',
   PROCESS_RETURNED: 'Процесс возвращён на доработку',
   PROCESS_RESUBMITTED: 'Отправлен повторно после доработки',
+  TASK_ESCALATED: 'Эскалировано по просрочке',
   PROCESS_APPROVED: 'Процесс согласован',
   PROCESS_REJECTED: 'Процесс отклонён',
   PROCESS_CANCELLED: 'Процесс отозван инициатором',

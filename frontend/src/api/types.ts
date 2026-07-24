@@ -111,6 +111,7 @@ export interface Task {
   result: TaskResult | null
   comment: string | null
   due_at: string | null
+  escalated_at: string | null
   completed_at: string | null
 }
 

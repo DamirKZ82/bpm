@@ -254,6 +254,19 @@ async def delivery_worker() -> None:
         await asyncio.sleep(5)
 
 
+async def escalation_worker() -> None:
+    """Периодическая эскалация просроченных задач (ТЗ §6.5)."""
+    while True:
+        try:
+            async with async_session() as session:
+                count = await process_service.escalate_overdue(session)
+                if count:
+                    logger.info(f'{{"event": "escalated", "count": {count}}}')
+        except Exception as exc:  # noqa: BLE001
+            logger.error(f'{{"event": "escalation_worker_crash", "error": "{exc}"}}')
+        await asyncio.sleep(settings.escalation_check_seconds)
+
+
 # --- Telegram: привязка и обработка нажатий ---
 
 async def _handle_start(chat_id: int, text: str) -> None:

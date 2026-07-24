@@ -30,6 +30,7 @@ async def lifespan(_: FastAPI):
     if settings.workers_enabled:
         from app.services.notify_delivery import (
             delivery_worker,
+            escalation_worker,
             imap_poller,
             telegram_poller,
         )
@@ -40,6 +41,9 @@ async def lifespan(_: FastAPI):
             workers.append(asyncio.create_task(telegram_poller()))
         if settings.imap_host:
             workers.append(asyncio.create_task(imap_poller()))
+        # эскалация просрочек не зависит от каналов доставки: in-app
+        # уведомления пишутся всегда, письмо/Telegram — если настроены
+        workers.append(asyncio.create_task(escalation_worker()))
     yield
     for worker in workers:
         worker.cancel()

@@ -38,17 +38,21 @@ class VatRateRead(BaseModel):
 
 class CounterpartyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=500)
-    bin: str | None = Field(default=None, max_length=12)  # строка, ведущие нули!
+    inn: str | None = Field(default=None, max_length=12)  # строка, ведущие нули!
     full_name: str | None = None
-    address: str | None = None
+    address: str | None = None  # юридический адрес
+    phone: str | None = None
+    email: str | None = None
     active: bool = True
 
 
 class CounterpartyUpdate(BaseModel):
     name: str | None = None
-    bin: str | None = None
+    inn: str | None = None
     full_name: str | None = None
     address: str | None = None
+    phone: str | None = None
+    email: str | None = None
     active: bool | None = None
 
 
@@ -56,10 +60,12 @@ class CounterpartyRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    bin: str | None
+    inn: str | None
     name: str
     full_name: str | None
     address: str | None
+    phone: str | None
+    email: str | None
     external_id: uuid.UUID | None
     sync_status: CounterpartySyncStatus
     active: bool

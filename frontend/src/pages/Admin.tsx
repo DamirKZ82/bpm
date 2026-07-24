@@ -28,6 +28,12 @@ const EMPLOYEE_STATUSES = [
   { value: 'TERMINATED', label: 'Уволен' },
 ]
 
+const CONTRACT_TYPES = [
+  { value: 'WORK', label: 'Договор подряда' },
+  { value: 'SUPPLY', label: 'Договор поставки' },
+  { value: 'SERVICE', label: 'Договор оказания услуг' },
+]
+
 const ORG = { optionsUrl: '/api/admin/organizations', optionLabel: 'name' }
 const POS = { optionsUrl: '/api/admin/positions', optionLabel: 'name' }
 const EMP = { optionsUrl: '/api/admin/employees', optionLabel: 'full_name' }
@@ -42,7 +48,11 @@ export const ENTITIES: Record<string, EntityConfig> = {
     exchangeEntity: 'ORGANIZATION',
     fields: [
       { key: 'name', label: 'Наименование', required: true },
-      { key: 'bin', label: 'БИН' },
+      { key: 'full_name', label: 'Полное наименование', inTable: false },
+      { key: 'inn', label: 'ИНН' },
+      { key: 'legal_address', label: 'Юридический адрес', inTable: false },
+      { key: 'phone', label: 'Телефон', inTable: false },
+      { key: 'email', label: 'Эл. адрес', inTable: false },
       { key: 'active', label: 'Активна', type: 'checkbox' },
     ],
   },
@@ -73,6 +83,7 @@ export const ENTITIES: Record<string, EntityConfig> = {
     exchangeEntity: 'EMPLOYEE',
     fields: [
       { key: 'full_name', label: 'ФИО', required: true },
+      { key: 'pinfl', label: 'ПИНФЛ' },
       { key: 'email', label: 'Email' },
       { key: 'status', label: 'Статус', options: EMPLOYEE_STATUSES },
     ],
@@ -132,9 +143,11 @@ export const ENTITIES: Record<string, EntityConfig> = {
     exchangeEntity: 'COUNTERPARTY',
     fields: [
       { key: 'name', label: 'Наименование', required: true },
-      { key: 'bin', label: 'БИН / ИИН' },
       { key: 'full_name', label: 'Полное наименование', inTable: false },
-      { key: 'address', label: 'Адрес', inTable: false },
+      { key: 'inn', label: 'ИНН' },
+      { key: 'address', label: 'Юридический адрес', inTable: false },
+      { key: 'phone', label: 'Телефон', inTable: false },
+      { key: 'email', label: 'Эл. адрес', inTable: false },
       { key: 'active', label: 'Активен', type: 'checkbox' },
     ],
   },
@@ -146,15 +159,15 @@ export const ENTITIES: Record<string, EntityConfig> = {
     fields: [
       { key: 'number', label: 'Номер' },
       { key: 'date', label: 'Дата', type: 'date' },
+      { key: 'contract_type', label: 'Вид договора', options: CONTRACT_TYPES },
       { key: 'counterparty_id', label: 'Контрагент', required: true, ...CPARTY },
       { key: 'organization_id', label: 'Организация', required: true, ...ORG },
       { key: 'project_id', label: 'Проект', ...PROJ, inTable: false },
-      { key: 'contract_type', label: 'Вид договора', inTable: false },
-      { key: 'amount', label: 'Сумма', type: 'number' },
-      { key: 'vat_rate_id', label: 'Ставка НДС', ...VAT },
+      { key: 'valid_from', label: 'Начало действия', type: 'date', inTable: false },
+      { key: 'valid_to', label: 'Окончание действия', type: 'date', inTable: false },
+      { key: 'amount', label: 'Сумма', type: 'number', inTable: false },
+      { key: 'vat_rate_id', label: 'Ставка НДС', ...VAT, inTable: false },
       { key: 'currency', label: 'Валюта', inTable: false },
-      { key: 'valid_from', label: 'Действует с', type: 'date', inTable: false },
-      { key: 'valid_to', label: 'Действует по', type: 'date', inTable: false },
       { key: 'responsible_id', label: 'Ответственный', ...EMP, inTable: false },
       { key: 'active', label: 'Активен', type: 'checkbox' },
     ],

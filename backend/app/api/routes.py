@@ -236,7 +236,7 @@ class CounterpartyRef(BaseModel):
 
     id: uuid.UUID
     name: str
-    bin: str | None
+    inn: str | None
 
 
 @router.get("/refs/counterparties", response_model=list[CounterpartyRef])

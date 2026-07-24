@@ -14,14 +14,22 @@ from app.models.enums import AbsenceType, EmployeeStatus
 
 class OrganizationCreate(BaseModel):
     name: str
-    bin: str | None = None
+    inn: str | None = None
+    full_name: str | None = None
+    legal_address: str | None = None
+    phone: str | None = None
+    email: str | None = None
     external_id_buh: uuid.UUID | None = None
     active: bool = True
 
 
 class OrganizationUpdate(BaseModel):
     name: str | None = None
-    bin: str | None = None
+    inn: str | None = None
+    full_name: str | None = None
+    legal_address: str | None = None
+    phone: str | None = None
+    email: str | None = None
     active: bool | None = None
 
 
@@ -30,7 +38,11 @@ class OrganizationRead(BaseModel):
 
     id: uuid.UUID
     name: str
-    bin: str | None
+    inn: str | None
+    full_name: str | None
+    legal_address: str | None
+    phone: str | None
+    email: str | None
     external_id_buh: uuid.UUID | None
     active: bool
 
@@ -83,6 +95,7 @@ class DepartmentRead(BaseModel):
 
 class EmployeeCreate(BaseModel):
     full_name: str
+    pinfl: str | None = None
     email: str | None = None
     external_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     status: EmployeeStatus = EmployeeStatus.ACTIVE
@@ -90,6 +103,7 @@ class EmployeeCreate(BaseModel):
 
 class EmployeeUpdate(BaseModel):
     full_name: str | None = None
+    pinfl: str | None = None
     email: str | None = None
     status: EmployeeStatus | None = None
 
@@ -99,6 +113,7 @@ class EmployeeRead(BaseModel):
 
     id: uuid.UUID
     full_name: str
+    pinfl: str | None
     email: str | None
     external_id: uuid.UUID
     status: EmployeeStatus

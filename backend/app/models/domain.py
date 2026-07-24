@@ -20,10 +20,13 @@ class Counterparty(UUIDPKMixin, Base):
 
     __tablename__ = "counterparties"
 
-    bin: Mapped[str | None] = mapped_column(String(12), index=True)
+    # ИНН (Узбекистан) — строка, ведущие нули значимы
+    inn: Mapped[str | None] = mapped_column(String(12), index=True)
     name: Mapped[str] = mapped_column(String(500))
     full_name: Mapped[str | None] = mapped_column(String(1000))
-    address: Mapped[str | None] = mapped_column(Text)
+    address: Mapped[str | None] = mapped_column(Text)  # юридический адрес
+    phone: Mapped[str | None] = mapped_column(String(50))
+    email: Mapped[str | None] = mapped_column(String(320))
     external_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), unique=True
     )

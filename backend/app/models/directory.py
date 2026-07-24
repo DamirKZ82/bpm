@@ -6,7 +6,7 @@ Read-only для бизнес-логики BPM — пишет в них толь
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, ForeignKey, String, text
+from sqlalchemy import BigInteger, ForeignKey, String, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,8 +20,13 @@ class Organization(UUIDPKMixin, Base):
     external_id_buh: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), unique=True
     )
-    bin: Mapped[str | None] = mapped_column(String(12), unique=True)
+    # ИНН (Узбекистан) — строка, ведущие нули значимы
+    inn: Mapped[str | None] = mapped_column(String(12), unique=True)
     name: Mapped[str] = mapped_column(String(500))
+    full_name: Mapped[str | None] = mapped_column(String(1000))
+    legal_address: Mapped[str | None] = mapped_column(Text)
+    phone: Mapped[str | None] = mapped_column(String(50))
+    email: Mapped[str | None] = mapped_column(String(320))
     active: Mapped[bool] = mapped_column(default=True)
 
 
@@ -53,6 +58,8 @@ class Employee(UUIDPKMixin, Base):
 
     external_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
     full_name: Mapped[str] = mapped_column(String(500))
+    # ПИНФЛ — идентификатор физлица (Узбекистан), строка 14 цифр
+    pinfl: Mapped[str | None] = mapped_column(String(14), index=True)
     # email из ЗУП — только fallback, основной источник — AD (ТЗ §7.3)
     email: Mapped[str | None] = mapped_column(String(320))
     status: Mapped[EmployeeStatus] = mapped_column(default=EmployeeStatus.ACTIVE)

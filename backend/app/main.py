@@ -20,6 +20,7 @@ from app.api import (
     admin,
     analytics,
     auth,
+    branding,
     documents,
     errors,
     notifications,
@@ -150,3 +151,4 @@ app.include_router(processes.router)
 app.include_router(notifications.router)
 app.include_router(errors.router)
 app.include_router(analytics.router)
+app.include_router(branding.router)

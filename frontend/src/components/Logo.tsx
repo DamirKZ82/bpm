@@ -1,9 +1,9 @@
 import { useTheme } from '@mui/material/styles'
+import { useBranding } from '../branding'
 
-/** Логотип AL BINA (оригинал: src/assets/al-bina.svg).
- * Знак всегда фирменный золотой; цвет надписи по умолчанию следует за темой
- * (синий на светлой, кремовый на тёмной) и может быть задан пропсом.
- * mark — только знак-гексагон без надписи (для свёрнутого меню). */
+/** Логотип приложения. Если админ загрузил свой логотип в «Настройки BPM» —
+ * показывается он; иначе — встроенный логотип по умолчанию.
+ * mark — только знак без надписи (для свёрнутого меню). */
 export function Logo({
   height = 30,
   textColor,
@@ -14,6 +14,18 @@ export function Logo({
   mark?: boolean
 }) {
   const theme = useTheme()
+  const { appName, logoUrl } = useBranding()
+
+  // загруженный логотип заменяет встроенный
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt={appName}
+        style={{ display: 'block', height, width: 'auto', maxWidth: markOnly ? height : height * 5 }}
+      />
+    )
+  }
   // фирменный синий на светлой теме, кремовый — на тёмной
   const textFill =
     textColor ?? (theme.palette.mode === 'dark' ? '#ece3d0' : '#1C2348')

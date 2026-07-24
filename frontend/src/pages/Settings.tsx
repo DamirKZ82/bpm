@@ -8,6 +8,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
+import { useBranding } from '../branding'
 
 interface StorageSettings {
   storage_backend: 'local' | 's3'
@@ -28,6 +29,48 @@ interface SettingsInfo {
 }
 
 export function SettingsPage() {
+  const { appName, logoUrl, refresh: refreshBranding } = useBranding()
+  const [nameInput, setNameInput] = useState('')
+  const [brandBusy, setBrandBusy] = useState(false)
+  const [brandMsg, setBrandMsg] = useState('')
+  const [brandErr, setBrandErr] = useState('')
+  useEffect(() => { setNameInput(appName) }, [appName])
+
+  const saveAppName = async () => {
+    setBrandBusy(true); setBrandMsg(''); setBrandErr('')
+    try {
+      await api('/api/branding', { method: 'PUT', body: { app_name: nameInput.trim() } })
+      refreshBranding()
+      setBrandMsg('Название сохранено')
+    } catch (err) {
+      setBrandErr(err instanceof ApiError ? err.message : 'Ошибка')
+    } finally { setBrandBusy(false) }
+  }
+
+  const uploadLogo = async (file: File) => {
+    setBrandBusy(true); setBrandMsg(''); setBrandErr('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      await api('/api/branding/logo', { method: 'POST', body: fd })
+      refreshBranding()
+      setBrandMsg('Логотип загружен')
+    } catch (err) {
+      setBrandErr(err instanceof ApiError ? err.message : 'Ошибка загрузки')
+    } finally { setBrandBusy(false) }
+  }
+
+  const removeLogo = async () => {
+    setBrandBusy(true); setBrandMsg(''); setBrandErr('')
+    try {
+      await api('/api/branding/logo', { method: 'DELETE' })
+      refreshBranding()
+      setBrandMsg('Логотип удалён — используется встроенный')
+    } catch (err) {
+      setBrandErr(err instanceof ApiError ? err.message : 'Ошибка')
+    } finally { setBrandBusy(false) }
+  }
+
   const [apiOk, setApiOk] = useState<boolean | null>(null)
   const [info, setInfo] = useState<SettingsInfo | null>(null)
   const [storage, setStorage] = useState<StorageSettings | null>(null)
@@ -141,6 +184,76 @@ export function SettingsPage() {
               </Typography>
             )}
           </Stack>
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5, mb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 0.5 }}>Брендирование</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Название и логотип приложения. Логотип отображается в меню, на
+          странице входа и в печатных формах. Рекомендуется PNG/SVG с
+          прозрачным фоном, высотой от 64 px, до 2 МБ.
+        </Typography>
+        <Stack spacing={2} sx={{ maxWidth: 560 }}>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+            <TextField
+              label="Название приложения"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              sx={{ flexGrow: 1 }}
+            />
+            <Button
+              variant="contained"
+              onClick={saveAppName}
+              disabled={brandBusy || !nameInput.trim() || nameInput.trim() === appName}
+              sx={{ mt: 0.5 }}
+            >
+              Сохранить
+            </Button>
+          </Stack>
+
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>Логотип</Typography>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+            <Paper
+              variant="outlined"
+              sx={{
+                width: 200, height: 72, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                bgcolor: (t) => (t.palette.mode === 'dark' ? '#211d17' : '#faf6ec'),
+                overflow: 'hidden',
+              }}
+            >
+              {logoUrl ? (
+                <img src={logoUrl} alt="Логотип" style={{ maxHeight: 56, maxWidth: 184 }} />
+              ) : (
+                <Typography variant="caption" color="text.secondary">
+                  Встроенный логотип
+                </Typography>
+              )}
+            </Paper>
+            <Stack spacing={1}>
+              <Button variant="outlined" component="label" disabled={brandBusy}>
+                Загрузить логотип
+                <input
+                  type="file"
+                  hidden
+                  accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif,image/x-icon"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) uploadLogo(f)
+                    e.target.value = ''
+                  }}
+                />
+              </Button>
+              {logoUrl && (
+                <Button color="error" onClick={removeLogo} disabled={brandBusy}>
+                  Удалить логотип
+                </Button>
+              )}
+            </Stack>
+          </Stack>
+          {brandErr && <Alert severity="error">{brandErr}</Alert>}
+          {brandMsg && <Alert severity="success">{brandMsg}</Alert>}
         </Stack>
       </Paper>
 

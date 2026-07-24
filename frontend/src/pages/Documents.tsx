@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useParams } from 'react-router-dom'
+import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -44,6 +44,7 @@ function today(): string {
 
 export function DocumentsPage() {
   const { typeCode = 'MEMO' } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { t } = useTranslation()
   const { user } = useAuth()
   const refs = useRefsData(true)
@@ -91,6 +92,20 @@ export function DocumentsPage() {
   }, [])
 
   useEffect(() => setCfFilters({}), [typeCode])
+
+  // переход с главной «Быстрое создание» — сразу открываем форму
+  useEffect(() => {
+    if (searchParams.get('new') !== '1' || user?.employee_id == null) return
+    setEditing({
+      date: today(),
+      organization_id:
+        refs.organizations.length === 1 ? refs.organizations[0].id : null,
+      custom_fields: {},
+    })
+    setError('')
+    searchParams.delete('new')
+    setSearchParams(searchParams, { replace: true })
+  }, [searchParams, setSearchParams, refs.organizations, user])
 
   const hasFilters =
     filterOrg !== '' ||

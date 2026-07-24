@@ -3,12 +3,13 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     Dictionary,
     DictionaryItem,
+    Document,
     DocumentType,
     DocumentTypeField,
     Employee,
@@ -126,6 +127,39 @@ async def ref_document_types(user: CurrentUser, session: SessionDep):
         ]
         result.append(item)
     return result
+
+
+class FrequentType(BaseModel):
+    code: str
+    name: str
+    count: int
+
+
+@router.get("/my/frequent-types", response_model=list[FrequentType])
+async def frequent_types(user: CurrentUser, session: SessionDep, limit: int = 4):
+    """Виды документов, которые пользователь создаёт чаще всего —
+    для быстрого запуска на главной. Без истории — порядок как в справочнике."""
+    counts = dict(
+        (
+            await session.execute(
+                select(Document.type_code, func.count())
+                .where(Document.author_id == user.id)
+                .group_by(Document.type_code)
+            )
+        ).all()
+    )
+    types = list(
+        await session.scalars(
+            select(DocumentType)
+            .where(DocumentType.active.is_(True))
+            .order_by(DocumentType.created_at)
+        )
+    )
+    ranked = sorted(types, key=lambda t: -counts.get(t.code, 0))
+    return [
+        FrequentType(code=t.code, name=t.name, count=counts.get(t.code, 0))
+        for t in ranked[:limit]
+    ]
 
 
 class EmployeeRef(BaseModel):

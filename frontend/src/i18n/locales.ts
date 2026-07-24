@@ -73,6 +73,8 @@ export const ru = {
     lastDocs: 'Мои последние документы',
     noTasks: 'Активных задач нет',
     noDocs: 'Документов пока нет',
+    quickCreate: 'Быстрое создание',
+    createNew: 'Создать документ',
   },
   tasks: {
     title: 'Мне на согласование',
@@ -190,6 +192,8 @@ export const uz: Dict = {
     lastDocs: 'So‘nggi hujjatlarim',
     noTasks: 'Faol vazifalar yo‘q',
     noDocs: 'Hozircha hujjatlar yo‘q',
+    quickCreate: 'Tez yaratish',
+    createNew: 'Hujjat yaratish',
   },
   tasks: {
     title: 'Menga kelishuvga',
@@ -307,6 +311,8 @@ export const en: Dict = {
     lastDocs: 'My recent documents',
     noTasks: 'No active tasks',
     noDocs: 'No documents yet',
+    quickCreate: 'Quick create',
+    createNew: 'Create document',
   },
   tasks: {
     title: 'To approve',

@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api/client'
 import type { DocumentItem, MyTask } from '../api/types'
+import { QuickCreate } from '../components/QuickCreate'
 import { ProcessStatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth'
 
@@ -215,6 +216,8 @@ export function DashboardPage() {
           )}
         </Paper>
       </Box>
+
+      <QuickCreate canCreate={user?.employee_id != null} />
     </>
   )
 }

@@ -67,8 +67,9 @@ def enqueue_for_user(
         email_body = text_body
         if full_link:
             email_body += f"\n\nОткрыть документ: {full_link}"
-        html_body = None
-        # почтовое согласование: mailto-кнопки, если включён приём (IMAP)
+        # почтовое согласование: mailto-кнопки только при включённом приёме
+        # (IMAP) — иначе клик отправил бы ответ, который некому обработать
+        apr = rej = None
         if action_task_id is not None and settings.imap_host:
             apr = _mailto_link(action_task_id, "APR", user.id)
             rej = _mailto_link(action_task_id, "REJ", user.id)
@@ -76,7 +77,8 @@ def enqueue_for_user(
                 "\n\nСогласовать по почте (отправьте письмо):\n" + apr +
                 "\n\nОтклонить по почте (укажите причину в теле письма):\n" + rej
             )
-            html_body = _email_html(title, content, full_link, apr, rej)
+        # HTML-версия отправляется всегда: аккуратное оформление даже без кнопок
+        html_body = _email_html(title, content, full_link, apr, rej)
         session.add(OutboundMessage(
             channel="EMAIL", recipient=user.email,
             subject=title, body=email_body, html_body=html_body,
@@ -139,17 +141,17 @@ def _fmt_line(line: str) -> str:
 
 
 def _email_html(title: str, content: str | None, link: str | None,
-                apr: str, rej: str) -> str:
+                apr: str | None = None, rej: str | None = None) -> str:
+    """HTML-письмо. Кнопки согласования — только если переданы apr/rej
+    (т.е. включён приём ответов по IMAP); иначе — просто уведомление."""
     body_html = "<br>".join(_fmt_line(ln) for ln in (content or "").split("\n"))
     link_html = (
         f'<p><b>Ссылка:</b> <a href="{escape(link)}">Перейти к документу</a></p>'
         if link else ""
     )
-    return f"""\
-<div style="font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;max-width:600px">
-  <p style="font-size:16px"><b>{escape(title)}</b></p>
-  <p style="color:#334155">{body_html}</p>
-  {link_html}
+    buttons_html = ""
+    if apr and rej:
+        buttons_html = f"""
   <p style="margin-top:20px">
     <a href="{escape(apr)}" style="display:inline-block;padding:10px 22px;
        background:#16a34a;color:#fff;text-decoration:none;border-radius:6px;
@@ -162,7 +164,12 @@ def _email_html(title: str, content: str | None, link: str | None,
     Кнопки формируют ответное письмо на служебный адрес — просто отправьте его.
     При отклонении впишите причину над служебной строкой. Служебную строку
     (^#^…^#^) не удаляйте.
-  </p>
+  </p>"""
+    return f"""\
+<div style="font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;max-width:600px">
+  <p style="font-size:16px"><b>{escape(title)}</b></p>
+  <p style="color:#334155">{body_html}</p>
+  {link_html}{buttons_html}
 </div>"""
 
 

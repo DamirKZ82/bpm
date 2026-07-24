@@ -21,6 +21,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { ApiError, api } from '../api/client'
 import type { DocumentItem, DocumentTypeRef } from '../api/types'
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
@@ -43,6 +44,7 @@ function today(): string {
 
 export function DocumentsPage() {
   const { typeCode = 'MEMO' } = useParams()
+  const { t } = useTranslation()
   const { user } = useAuth()
   const refs = useRefsData(true)
   const [docTypes, setDocTypes] = useState<DocumentTypeRef[]>([])
@@ -58,6 +60,8 @@ export function DocumentsPage() {
   const [period, setPeriod] = useState<Period>(EMPTY_PERIOD)
   // отбор по настраиваемым полям вида: код поля (или код_from/_to) -> значение
   const [cfFilters, setCfFilters] = useState<Record<string, string>>({})
+  // область видимости: все доступные / мои / где я согласующий
+  const [scope, setScope] = useState('')
 
   const docType = useMemo(
     () => docTypes.find((t) => t.code === typeCode) ?? null,
@@ -66,6 +70,7 @@ export function DocumentsPage() {
 
   const reload = useCallback(() => {
     const params = new URLSearchParams({ type_code: typeCode })
+    if (scope) params.set('scope', scope)
     if (filterOrg) params.set('organization_id', filterOrg)
     if (filterProject) params.set('project_id', filterProject)
     if (period.from) params.set('date_from', period.from)
@@ -74,7 +79,7 @@ export function DocumentsPage() {
       if (value !== '') params.set(`cf_${key}`, value)
     }
     api<DocumentItem[]>(`/api/documents?${params}`).then(setDocuments)
-  }, [typeCode, filterOrg, filterProject, period, cfFilters])
+  }, [typeCode, scope, filterOrg, filterProject, period, cfFilters])
 
   useEffect(() => {
     setDocuments(null)
@@ -217,6 +222,16 @@ export function DocumentsPage() {
               'repeat(auto-fill, minmax(max(210px, calc(20% - 12px)), 1fr))',
           }}
         >
+          <TextField
+            select
+            label={t('doc.scope')}
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+          >
+            <MenuItem value="">{t('doc.scopeAll')}</MenuItem>
+            <MenuItem value="my">{t('doc.scopeMine')}</MenuItem>
+            <MenuItem value="approvals">{t('doc.scopeApprovals')}</MenuItem>
+          </TextField>
           <TextField
             select
             label="Организация"
@@ -362,12 +377,12 @@ export function DocumentsPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Номер</TableCell>
-                <TableCell>Тема</TableCell>
-                {isAdmin && <TableCell>Автор</TableCell>}
-                <TableCell>Дата</TableCell>
-                <TableCell>Проект</TableCell>
-                <TableCell>Статус</TableCell>
+                <TableCell>{t('doc.number')}</TableCell>
+                <TableCell>{t('doc.subject')}</TableCell>
+                <TableCell>{t('doc.author')}</TableCell>
+                <TableCell>{t('doc.date')}</TableCell>
+                <TableCell>{t('doc.project')}</TableCell>
+                <TableCell>{t('doc.status')}</TableCell>
                 <TableCell align="right" width={310} />
               </TableRow>
             </TableHead>
@@ -391,9 +406,7 @@ export function DocumentsPage() {
                       </Link>
                     )}
                   </TableCell>
-                  {isAdmin && (
-                    <TableCell>{document.author_name ?? '—'}</TableCell>
-                  )}
+                  <TableCell>{document.author_name ?? '—'}</TableCell>
                   <TableCell>{formatDate(document.date)}</TableCell>
                   <TableCell>{document.project_name ?? '—'}</TableCell>
                   <TableCell>

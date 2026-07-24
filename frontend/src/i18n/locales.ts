@@ -103,6 +103,10 @@ export const ru = {
     all: 'все',
     noDocs: 'Документов пока нет',
     draft: 'Черновик',
+    scope: 'Показывать',
+    scopeAll: 'Все доступные',
+    scopeMine: 'Мои',
+    scopeApprovals: 'На моём согласовании',
   },
   search: {
     placeholder: 'Поиск документов…',
@@ -216,6 +220,10 @@ export const uz: Dict = {
     all: 'barchasi',
     noDocs: 'Hozircha hujjatlar yo‘q',
     draft: 'Qoralama',
+    scope: 'Ko‘rsatish',
+    scopeAll: 'Barcha mavjud',
+    scopeMine: 'Meniki',
+    scopeApprovals: 'Mening kelishuvimda',
   },
   search: {
     placeholder: 'Hujjatlarni qidirish…',
@@ -329,6 +337,10 @@ export const en: Dict = {
     all: 'all',
     noDocs: 'No documents yet',
     draft: 'Draft',
+    scope: 'Show',
+    scopeAll: 'All available',
+    scopeMine: 'Mine',
+    scopeApprovals: 'My approvals',
   },
   search: {
     placeholder: 'Search documents…',

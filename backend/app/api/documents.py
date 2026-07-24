@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, status
-from sqlalchemy import Numeric, cast, select, text
+from sqlalchemy import Numeric, cast, or_, select, text
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
@@ -325,14 +325,41 @@ async def list_documents(
     date_to: date_type | None = None,
     search: str | None = None,
     limit: int | None = None,
+    scope: str | None = None,
 ):
-    """Свои документы; администратор видит все (ТЗ §3.6).
-    Отбор: вид, организация, проект, период, настраиваемые поля (cf_*),
-    поиск по номеру и теме (search)."""
+    """Видимость по ТЗ §3.6: автор видит свои; согласующий — документы
+    со своей задачей (текущей или прошлой); наблюдатель — по своей
+    организации; администратор — все.
+    scope: my (только свои) | approvals (только где я согласующий).
+    Отбор: вид, организация, проект, период, поля (cf_*), поиск."""
     is_admin = UserRole.ADMIN in user.roles
     stmt = select(Document).order_by(Document.created_at.desc())
-    if not is_admin:
+
+    # документы, где у пользователя есть (или была) задача согласования
+    participant_docs = (
+        select(ProcessInstance.object_id)
+        .join(Task, Task.process_id == ProcessInstance.id)
+        .where(Task.assignee_id == user.employee_id)
+        if user.employee_id
+        else None
+    )
+
+    if scope == "my":
         stmt = stmt.where(Document.author_id == user.id)
+    elif scope == "approvals":
+        if participant_docs is None:
+            return []
+        stmt = stmt.where(Document.id.in_(participant_docs))
+    elif not is_admin:
+        visible = [Document.author_id == user.id]
+        if participant_docs is not None:
+            visible.append(Document.id.in_(participant_docs))
+            if UserRole.OBSERVER in user.roles:
+                own_orgs = select(Employment.organization_id).where(
+                    Employment.employee_id == user.employee_id
+                )
+                visible.append(Document.organization_id.in_(own_orgs))
+        stmt = stmt.where(or_(*visible))
     if search:
         pattern = f"%{search.strip()}%"
         stmt = stmt.where(
@@ -354,7 +381,7 @@ async def list_documents(
     documents = list(await session.scalars(stmt))
 
     author_names: dict[uuid.UUID, str] = {}
-    if is_admin and documents:
+    if documents:
         rows = await session.execute(
             select(User.id, User.display_name, User.ad_sam_account_name).where(
                 User.id.in_({d.author_id for d in documents if d.author_id})

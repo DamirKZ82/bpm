@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlined'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
@@ -83,9 +85,21 @@ export function DashboardPage() {
 
   return (
     <>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
-        {t('dashboard.title')}
-      </Typography>
+      <Stack
+        direction="row"
+        sx={{ mb: 2, alignItems: 'center', justifyContent: 'space-between' }}
+      >
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          {t('dashboard.title')}
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<HelpOutlineIcon />}
+          onClick={() => window.open('/help/overview.html', '_blank', 'noopener')}
+        >
+          {t('dashboard.help')}
+        </Button>
+      </Stack>
 
       <Box
         sx={{

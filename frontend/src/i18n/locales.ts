@@ -67,6 +67,7 @@ export const ru = {
   },
   dashboard: {
     title: 'Главная',
+    help: 'Справка',
     toApprove: 'Мне на согласование',
     overdueMine: 'Просрочено у меня',
     inWork: 'Мои документы в работе',
@@ -202,6 +203,7 @@ export const uz: Dict = {
   },
   dashboard: {
     title: 'Bosh sahifa',
+    help: 'Ma’lumotnoma',
     toApprove: 'Menga kelishuvga',
     overdueMine: 'Mening muddati o‘tganlarim',
     inWork: 'Jarayondagi hujjatlarim',
@@ -337,6 +339,7 @@ export const en: Dict = {
   },
   dashboard: {
     title: 'Home',
+    help: 'Help',
     toApprove: 'To approve',
     overdueMine: 'My overdue',
     inWork: 'My documents in progress',

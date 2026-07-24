@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlined'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -255,25 +256,34 @@ export function RouteMatrixPage() {
             Изменения не влияют на запущенные процессы.
           </Typography>
         </div>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setEditing({
-              object_type: 'MEMO',
-              organization_id: null,
-              project_id: null,
-              priority: 100,
-              valid_from: null,
-              valid_to: null,
-              stages: [emptyStage()],
-            })
-            setOriginal(null)
-            setError('')
-          }}
-        >
-          Новый маршрут
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<HelpOutlineIcon />}
+            onClick={() => window.open('/help/route-matrix.html', '_blank', 'noopener')}
+          >
+            Инструкция
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setEditing({
+                object_type: 'MEMO',
+                organization_id: null,
+                project_id: null,
+                priority: 100,
+                valid_from: null,
+                valid_to: null,
+                stages: [emptyStage()],
+              })
+              setOriginal(null)
+              setError('')
+            }}
+          >
+            Новый маршрут
+          </Button>
+        </Stack>
       </Stack>
       {listError && <Alert severity="error" sx={{ mb: 2 }}>{listError}</Alert>}
 

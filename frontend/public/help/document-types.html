@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Инструкция · Виды документов</title>
+<style>
+  :root {
+    --page: #f4eee0; --card: #ffffff; --ink: #2f2a1f; --muted: #8a7d64;
+    --line: #e2d8c2; --accent: #d98324; --accent-soft: #f9ecd6;
+    --ok: #4a8f52; --warn: #c9741f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.65; font-size: 16px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.top { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  header.top .badge {
+    width: 46px; height: 46px; border-radius: 12px; flex: 0 0 auto;
+    background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 24px;
+  }
+  h1 { font-size: 27px; margin: 0; }
+  .sub { color: var(--muted); margin: 2px 0 26px; }
+  h2 {
+    font-size: 21px; margin: 34px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--line);
+  }
+  h2 .n {
+    display: inline-grid; place-items: center; width: 30px; height: 30px;
+    background: var(--accent-soft); color: var(--warn); border-radius: 8px;
+    font-size: 16px; margin-right: 8px; vertical-align: middle;
+  }
+  p { margin: 10px 0; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 18px 20px; margin: 16px 0;
+  }
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 14px 0; }
+  .steps li { position: relative; padding: 10px 0 10px 46px; border-bottom: 1px dashed var(--line); }
+  .steps li:last-child { border-bottom: 0; }
+  .steps li::before {
+    counter-increment: s; content: counter(s);
+    position: absolute; left: 0; top: 8px; width: 30px; height: 30px;
+    background: var(--accent); color: #fff; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 700;
+  }
+  .tip, .warn-box { border-radius: 12px; padding: 12px 16px; margin: 16px 0; font-size: 15px; }
+  .tip { background: #eef6ec; border: 1px solid #cfe6cf; }
+  .warn-box { background: #fdf1e0; border: 1px solid #f0d6ad; }
+  .tip b, .warn-box b { display: block; margin-bottom: 2px; }
+  figure { margin: 18px 0; text-align: center; }
+  figure svg { max-width: 100%; height: auto; }
+  figcaption { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+  .mini { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .mini h4 { margin: 0 0 4px; font-size: 15px; }
+  .mini p { margin: 0; font-size: 14px; color: var(--muted); }
+  code { background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; font-size: 14px; }
+  table.types { width: 100%; border-collapse: collapse; margin: 14px 0; background: var(--card); border-radius: 12px; overflow: hidden; }
+  table.types th, table.types td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 15px; }
+  table.types th { background: var(--accent-soft); color: var(--warn); }
+  table.types tr:last-child td { border-bottom: 0; }
+  .faq summary { cursor: pointer; font-weight: 600; padding: 10px 0; }
+  .footer { margin-top: 40px; color: var(--muted); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="badge">📄</div>
+    <div>
+      <h1>Виды документов</h1>
+      <div class="sub">Как создать свой тип документа и настроить его поля</div>
+    </div>
+  </header>
+
+  <div class="card">
+    <p><b>Простыми словами.</b> Вид документа — это <b>шаблон</b>. Например:
+    «Служебная записка», «Заявка на договор», «Заявка на пропуск». Вы сами
+    решаете, какие типы документов есть в системе и какие данные в них
+    заполняются.</p>
+    <p>У каждого вида есть <b>стандартные реквизиты</b> (они всегда) и ваши
+    <b>собственные поля</b> (добавляете под свои нужды).</p>
+  </div>
+
+  <h2><span class="n">1</span>Стандартные реквизиты</h2>
+  <p>Эти поля есть у <b>любого</b> документа — их не нужно настраивать:</p>
+  <div class="grid">
+    <div class="mini"><h4>Номер</h4><p>Присваивается автоматически по префиксу вида.</p></div>
+    <div class="mini"><h4>Дата</h4><p>Дата документа.</p></div>
+    <div class="mini"><h4>Организация и Проект</h4><p>Обязательные реквизиты.</p></div>
+    <div class="mini"><h4>Тема и Содержание</h4><p>О чём документ.</p></div>
+    <div class="mini"><h4>Вложения</h4><p>Файлы к документу.</p></div>
+    <div class="mini"><h4>Ваши поля</h4><p>Всё остальное — добавляете сами (см. ниже).</p></div>
+  </div>
+
+  <h2><span class="n">2</span>Собственные поля — конструктор</h2>
+  <p>Здесь вы добавляете поля, которые нужны именно этому виду. Например, у
+    «Заявки на договор» — поля <b>Контрагент</b>, <b>Сумма</b>, <b>Срок</b>.</p>
+  <figure>
+    <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Конструктор полей">
+      <rect x="8" y="8" width="624" height="194" rx="16" fill="#ffffff" stroke="#e2d8c2"/>
+      <text x="28" y="38" font-family="sans-serif" font-size="16" font-weight="700" fill="#2f2a1f">Заявка на договор · поля</text>
+      <!-- строка поля 1 -->
+      <rect x="28" y="52" width="220" height="34" rx="8" fill="#faf6ec" stroke="#e2d8c2"/>
+      <text x="42" y="74" font-family="sans-serif" font-size="13" fill="#2f2a1f">Код: contractor</text>
+      <rect x="258" y="52" width="200" height="34" rx="8" fill="#faf6ec" stroke="#e2d8c2"/>
+      <text x="272" y="74" font-family="sans-serif" font-size="13" fill="#2f2a1f">Контрагент</text>
+      <rect x="468" y="52" width="140" height="34" rx="8" fill="#f9ecd6" stroke="#f0d6ad"/>
+      <text x="482" y="74" font-family="sans-serif" font-size="13" fill="#c9741f">Ссылка</text>
+      <!-- строка поля 2 -->
+      <rect x="28" y="94" width="220" height="34" rx="8" fill="#faf6ec" stroke="#e2d8c2"/>
+      <text x="42" y="116" font-family="sans-serif" font-size="13" fill="#2f2a1f">Код: amount</text>
+      <rect x="258" y="94" width="200" height="34" rx="8" fill="#faf6ec" stroke="#e2d8c2"/>
+      <text x="272" y="116" font-family="sans-serif" font-size="13" fill="#2f2a1f">Сумма</text>
+      <rect x="468" y="94" width="140" height="34" rx="8" fill="#f9ecd6" stroke="#f0d6ad"/>
+      <text x="482" y="116" font-family="sans-serif" font-size="13" fill="#c9741f">Деньги</text>
+      <!-- строка поля 3 -->
+      <rect x="28" y="136" width="220" height="34" rx="8" fill="#faf6ec" stroke="#e2d8c2"/>
+      <text x="42" y="158" font-family="sans-serif" font-size="13" fill="#2f2a1f">Код: sign_date</text>
+      <rect x="258" y="136" width="200" height="34" rx="8" fill="#faf6ec" stroke="#e2d8c2"/>
+      <text x="272" y="158" font-family="sans-serif" font-size="13" fill="#2f2a1f">Дата подписания</text>
+      <rect x="468" y="136" width="140" height="34" rx="8" fill="#f9ecd6" stroke="#f0d6ad"/>
+      <text x="482" y="158" font-family="sans-serif" font-size="13" fill="#c9741f">Дата</text>
+    </svg>
+    <figcaption>Каждое поле: код (латиницей) · название · тип</figcaption>
+  </figure>
+
+  <h2><span class="n">3</span>Типы полей</h2>
+  <table class="types">
+    <tr><th>Тип</th><th>Для чего</th></tr>
+    <tr><td>Строка</td><td>Короткий текст в одну строку.</td></tr>
+    <tr><td>Текст</td><td>Длинный текст в несколько строк.</td></tr>
+    <tr><td>Число</td><td>Обычное число (количество, срок в днях).</td></tr>
+    <tr><td>Деньги</td><td>Сумма. Именно по такому полю удобно строить условия в матрице.</td></tr>
+    <tr><td>Дата</td><td>Выбор даты из календаря.</td></tr>
+    <tr><td>Да / Нет</td><td>Галочка (флажок).</td></tr>
+    <tr><td>Ссылка на справочник</td><td>Выбор из списка: сотрудники, организации, проекты или свой справочник.</td></tr>
+  </table>
+
+  <h2><span class="n">4</span>Как создать вид документа — по шагам</h2>
+  <ol class="steps">
+    <li>Нажмите <b>«Новый вид»</b> в правом верхнем углу.</li>
+    <li>Впишите <b>Название</b> (например, «Заявка на договор») и <b>Префикс</b>
+      для номеров (например, <code>ДГ</code> → номера будут ДГ-000001, ДГ-000002…).</li>
+    <li>Нажмите <b>«Поле»</b> и добавьте нужное поле: укажите <b>код</b>
+      (латиницей, например <code>amount</code>), <b>название</b> и <b>тип</b>.</li>
+    <li>Отметьте галочкой <b>«Обязательное»</b>, если поле нельзя оставлять
+      пустым.</li>
+    <li>Добавьте столько полей, сколько нужно, и нажмите <b>«Сохранить»</b>.</li>
+  </ol>
+  <div class="tip"><b>💡 Про код поля</b>
+    Код — это техническое имя латиницей без пробелов (<code>amount</code>,
+    <code>contractor</code>). Название — это то, что видит пользователь
+    («Сумма»). Код менять после создания не стоит.</div>
+
+  <h2><span class="n">5</span>Связь с матрицей согласования</h2>
+  <p>Поля документа используются в <b>условных этапах</b> матрицы. Например, вы
+    добавили денежное поле <b>Сумма</b> — теперь в матрице можно настроить:
+    «этап Директора включается, только если <b>Сумма &gt; 1 000 000</b>».</p>
+  <div class="warn-box"><b>⚠️ Порядок действий</b>
+    Сначала создайте поле в виде документа (шаг 4), и только потом оно появится
+    в списке полей при настройке условия в <b>«Матрице согласования»</b>.</div>
+
+  <h2><span class="n">6</span>Частые вопросы</h2>
+  <details class="faq"><summary>Можно ли удалить вид документа?</summary>
+    <p>Системный вид «Служебная записка» удалить нельзя. Остальные — можно, если
+    по ним нет документов. Вместо удаления вид можно сделать неактивным.</p></details>
+  <details class="faq"><summary>Что такое «Ссылка на справочник»?</summary>
+    <p>Это поле-выбор из готового списка: сотрудники, организации, проекты или
+    ваш собственный справочник (раздел «Справочники»). Пользователь не вводит
+    текст, а выбирает нужное значение.</p></details>
+  <details class="faq"><summary>Откуда берутся номера документов?</summary>
+    <p>Система нумерует автоматически по префиксу вида. Счётчик у каждого вида
+    свой.</p></details>
+
+  <div class="footer">BPM AL-BINA · Инструкция по видам документов</div>
+</div>
+</body>
+</html>

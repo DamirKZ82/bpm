@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlined'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
@@ -149,16 +150,25 @@ export function DocumentTypesPage() {
             дополнительные поля. Маршрут вида задаётся в матрице согласования.
           </Typography>
         </div>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setEditing({ name: '', prefix: '', active: true, fields: [] })
-            setError('')
-          }}
-        >
-          Новый вид
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<HelpOutlineIcon />}
+            onClick={() => window.open('/help/document-types.html', '_blank', 'noopener')}
+          >
+            Инструкция
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setEditing({ name: '', prefix: '', active: true, fields: [] })
+              setError('')
+            }}
+          >
+            Новый вид
+          </Button>
+        </Stack>
       </Stack>
       {listError && <Alert severity="error" sx={{ mb: 2 }}>{listError}</Alert>}
 

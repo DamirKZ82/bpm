@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Инструкция · Матрица согласования</title>
+<style>
+  :root {
+    --page: #f4eee0; --card: #ffffff; --ink: #2f2a1f; --muted: #8a7d64;
+    --line: #e2d8c2; --accent: #d98324; --accent-soft: #f9ecd6;
+    --ok: #4a8f52; --warn: #c9741f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.65; font-size: 16px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.top {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 8px;
+  }
+  header.top .badge {
+    width: 46px; height: 46px; border-radius: 12px; flex: 0 0 auto;
+    background: var(--accent); color: #fff; display: grid; place-items: center;
+    font-size: 24px;
+  }
+  h1 { font-size: 27px; margin: 0; }
+  .sub { color: var(--muted); margin: 2px 0 26px; }
+  h2 {
+    font-size: 21px; margin: 34px 0 12px; padding-bottom: 6px;
+    border-bottom: 2px solid var(--line);
+  }
+  h2 .n {
+    display: inline-grid; place-items: center; width: 30px; height: 30px;
+    background: var(--accent-soft); color: var(--warn); border-radius: 8px;
+    font-size: 16px; margin-right: 8px; vertical-align: middle;
+  }
+  p { margin: 10px 0; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 18px 20px; margin: 16px 0;
+  }
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 14px 0; }
+  .steps li {
+    position: relative; padding: 10px 0 10px 46px; border-bottom: 1px dashed var(--line);
+  }
+  .steps li:last-child { border-bottom: 0; }
+  .steps li::before {
+    counter-increment: s; content: counter(s);
+    position: absolute; left: 0; top: 8px; width: 30px; height: 30px;
+    background: var(--accent); color: #fff; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 700;
+  }
+  .tip, .warn-box {
+    border-radius: 12px; padding: 12px 16px; margin: 16px 0; font-size: 15px;
+  }
+  .tip { background: #eef6ec; border: 1px solid #cfe6cf; }
+  .warn-box { background: #fdf1e0; border: 1px solid #f0d6ad; }
+  .tip b, .warn-box b { display: block; margin-bottom: 2px; }
+  figure { margin: 18px 0; text-align: center; }
+  figure svg { max-width: 100%; height: auto; }
+  figcaption { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+  .mini { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .mini h4 { margin: 0 0 4px; font-size: 15px; }
+  .mini p { margin: 0; font-size: 14px; color: var(--muted); }
+  code { background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; font-size: 14px; }
+  .faq { margin: 8px 0; }
+  .faq summary { cursor: pointer; font-weight: 600; padding: 10px 0; }
+  .footer { margin-top: 40px; color: var(--muted); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="badge">🗺️</div>
+    <div>
+      <h1>Матрица согласования</h1>
+      <div class="sub">Как настроить, кто и в каком порядке согласует документы</div>
+    </div>
+  </header>
+
+  <div class="card">
+    <p><b>Простыми словами.</b> Матрица — это правила движения документа.
+    Когда сотрудник отправляет документ (например, служебную записку),
+    система смотрит в матрицу и сама выстраивает <b>маршрут</b>: кому отдать
+    на согласование первым, кому вторым и так далее.</p>
+    <p>Вы задаёте эти правила один раз. Дальше система применяет их автоматически
+    к каждому новому документу.</p>
+  </div>
+
+  <h2><span class="n">1</span>Из чего состоит маршрут</h2>
+  <p>Один <b>маршрут</b> — это одна карточка. Внутри карточки идут <b>этапы</b>
+    (шаги), а в каждом этапе — <b>участники</b> (кто согласует).</p>
+
+  <figure>
+    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Схема карточки маршрута">
+      <rect x="8" y="8" width="624" height="234" rx="16" fill="#ffffff" stroke="#e2d8c2"/>
+      <text x="28" y="40" font-family="sans-serif" font-size="17" font-weight="700" fill="#2f2a1f">Служебная записка</text>
+      <rect x="27" y="52" width="150" height="22" rx="11" fill="#f9ecd6"/>
+      <text x="36" y="68" font-family="sans-serif" font-size="12" fill="#c9741f">Любая организация</text>
+      <!-- этап 1 -->
+      <rect x="28" y="92" width="270" height="130" rx="12" fill="#faf6ec" stroke="#e2d8c2"/>
+      <text x="44" y="116" font-family="sans-serif" font-size="14" font-weight="700" fill="#2f2a1f">Этап 1 · последовательно</text>
+      <rect x="44" y="130" width="238" height="34" rx="8" fill="#ffffff" stroke="#e2d8c2"/>
+      <circle cx="63" cy="147" r="9" fill="#d98324"/>
+      <text x="82" y="152" font-family="sans-serif" font-size="13" fill="#2f2a1f">Юрист · согласование</text>
+      <rect x="44" y="172" width="238" height="34" rx="8" fill="#ffffff" stroke="#e2d8c2"/>
+      <circle cx="63" cy="189" r="9" fill="#d98324"/>
+      <text x="82" y="194" font-family="sans-serif" font-size="13" fill="#2f2a1f">Бухгалтер · согласование</text>
+      <!-- стрелка -->
+      <path d="M304 157 h30" stroke="#c9741f" stroke-width="2" fill="none" marker-end="url(#a)"/>
+      <defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#c9741f"/></marker></defs>
+      <!-- этап 2 -->
+      <rect x="342" y="92" width="272" height="130" rx="12" fill="#faf6ec" stroke="#e2d8c2"/>
+      <text x="358" y="116" font-family="sans-serif" font-size="14" font-weight="700" fill="#2f2a1f">Этап 2 · последовательно</text>
+      <rect x="358" y="130" width="240" height="34" rx="8" fill="#ffffff" stroke="#e2d8c2"/>
+      <circle cx="377" cy="147" r="9" fill="#d98324"/>
+      <text x="396" y="152" font-family="sans-serif" font-size="13" fill="#2f2a1f">Директор · согласование</text>
+    </svg>
+    <figcaption>Карточка маршрута: сначала весь Этап 1, потом Этап 2</figcaption>
+  </figure>
+
+  <h2><span class="n">2</span>Как создать маршрут — по шагам</h2>
+  <ol class="steps">
+    <li>Нажмите кнопку <b>«Новый маршрут»</b> в правом верхнем углу.</li>
+    <li>Выберите <b>Вид объекта</b> — для какого вида документа этот маршрут
+      (например, «Служебная записка»).</li>
+    <li>При необходимости выберите <b>Организацию</b> и <b>Проект</b>. Если
+      оставить «Любая» / «Любой» — правило подойдёт всем.</li>
+    <li>В <b>Этапе 1</b> выберите тип этапа и добавьте участников: нажмите
+      <b>«Участник»</b>, укажите <b>адресацию</b> (обычно «Должность в
+      организации») и саму <b>должность</b>.</li>
+    <li>Нужны ещё шаги? Нажмите <b>«Добавить этап»</b> и повторите.</li>
+    <li>Нажмите <b>«Сохранить маршрут»</b>. Готово!</li>
+  </ol>
+  <div class="tip"><b>💡 Подсказка</b>
+    Задачи назначаются на <b>должность</b>, а не на конкретного человека.
+    Кто занимает эту должность — того система и найдёт. Уволился сотрудник или
+    ушёл в отпуск — маршрут не сломается.</div>
+
+  <h2><span class="n">3</span>Типы этапов</h2>
+  <p>Тип этапа определяет, как согласуют участники <b>внутри одного шага</b>.</p>
+  <figure>
+    <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Последовательно и параллельно">
+      <text x="20" y="24" font-family="sans-serif" font-size="14" font-weight="700" fill="#2f2a1f">Последовательно — по очереди</text>
+      <rect x="20" y="36" width="120" height="40" rx="10" fill="#fff" stroke="#e2d8c2"/><text x="80" y="61" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#2f2a1f">Юрист</text>
+      <path d="M144 56 h34" stroke="#c9741f" stroke-width="2" marker-end="url(#b)"/>
+      <rect x="182" y="36" width="120" height="40" rx="10" fill="#fff" stroke="#e2d8c2"/><text x="242" y="61" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#2f2a1f">Бухгалтер</text>
+      <path d="M306 56 h34" stroke="#c9741f" stroke-width="2" marker-end="url(#b)"/>
+      <rect x="344" y="36" width="120" height="40" rx="10" fill="#fff" stroke="#e2d8c2"/><text x="404" y="61" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#2f2a1f">Директор</text>
+
+      <text x="20" y="124" font-family="sans-serif" font-size="14" font-weight="700" fill="#2f2a1f">Параллельно — всем сразу</text>
+      <circle cx="34" cy="160" r="5" fill="#d98324"/>
+      <path d="M40 160 C 90 160, 90 150, 140 150" stroke="#c9741f" stroke-width="2" fill="none"/>
+      <path d="M40 160 C 90 160, 90 185, 140 185" stroke="#c9741f" stroke-width="2" fill="none"/>
+      <rect x="140" y="132" width="130" height="34" rx="10" fill="#fff" stroke="#e2d8c2"/><text x="205" y="154" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#2f2a1f">Юрист</text>
+      <rect x="140" y="170" width="130" height="34" rx="10" fill="#fff" stroke="#e2d8c2"/><text x="205" y="192" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#2f2a1f">Бухгалтер</text>
+      <defs><marker id="b" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#c9741f"/></marker></defs>
+    </svg>
+    <figcaption>Слева — по очереди, справа — одновременно</figcaption>
+  </figure>
+  <div class="grid">
+    <div class="mini"><h4>Последовательно</h4><p>Участники согласуют строго по очереди, один за другим.</p></div>
+    <div class="mini"><h4>Параллельно — все</h4><p>Задача уходит всем сразу. Этап пройден, когда согласовали все.</p></div>
+    <div class="mini"><h4>Параллельно — любой</h4><p>Задача уходит всем сразу. Достаточно, чтобы согласовал любой один.</p></div>
+    <div class="mini"><h4>Кворум N из M</h4><p>Достаточно согласия заданного числа участников (например, 2 из 3).</p></div>
+  </div>
+
+  <h2><span class="n">4</span>Виды задания</h2>
+  <p>У каждого участника можно выбрать, <b>что именно</b> он должен сделать:</p>
+  <div class="grid">
+    <div class="mini"><h4>✅ Согласование</h4><p>Согласовать или отклонить. Обычный визирующий.</p></div>
+    <div class="mini"><h4>🛠️ Исполнение</h4><p>Выполнить поручение: «Исполнено» или «Не выполнено». Например, юрист по заявке на договор.</p></div>
+    <div class="mini"><h4>👁️ Ознакомление</h4><p>Просто ознакомиться. Отклонить нельзя — только «Ознакомлен».</p></div>
+  </div>
+
+  <h2><span class="n">5</span>Условные этапы</h2>
+  <p>Этап можно включать <b>только при выполнении условия</b> — по значению поля
+    документа. Классический пример: подпись директора нужна, только если сумма
+    договора больше миллиона.</p>
+  <figure>
+    <svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Условный этап по сумме">
+      <rect x="250" y="18" width="140" height="40" rx="10" fill="#fff" stroke="#e2d8c2"/>
+      <text x="320" y="43" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#2f2a1f">Сумма договора?</text>
+      <!-- ветка меньше -->
+      <path d="M250 38 C 170 38, 150 100, 120 118" stroke="#8a7d64" stroke-width="2" fill="none" marker-end="url(#c)"/>
+      <text x="150" y="86" font-family="sans-serif" font-size="12" fill="#8a7d64">≤ 1 000 000</text>
+      <rect x="20" y="120" width="200" height="36" rx="10" fill="#eef6ec" stroke="#cfe6cf"/>
+      <text x="120" y="143" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#2f2a1f">Только юрист — готово</text>
+      <!-- ветка больше -->
+      <path d="M390 38 C 470 38, 490 100, 520 118" stroke="#c9741f" stroke-width="2" fill="none" marker-end="url(#c)"/>
+      <text x="452" y="86" font-family="sans-serif" font-size="12" fill="#c9741f">&gt; 1 000 000</text>
+      <rect x="420" y="120" width="200" height="36" rx="10" fill="#fdf1e0" stroke="#f0d6ad"/>
+      <text x="520" y="143" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#2f2a1f">Юрист + Директор</text>
+      <defs><marker id="c" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#8a7d64"/></marker></defs>
+    </svg>
+    <figcaption>Этап «Директор» включается только при сумме больше 1 000 000</figcaption>
+  </figure>
+  <ol class="steps">
+    <li>В нужном этапе найдите строку <b>«Условие»</b>.</li>
+    <li>Выберите <b>Поле</b> документа (например, «Сумма»). Доступны числовые,
+      денежные, текстовые поля и «Да/Нет».</li>
+    <li>Выберите <b>оператор</b> (<code>&gt;</code>, <code>≥</code>,
+      <code>&lt;</code>, <code>≤</code>, <code>=</code>, <code>≠</code>) и впишите
+      <b>значение</b>.</li>
+    <li>Если оставить поле пустым (<b>«— всегда включён —»</b>), этап будет
+      применяться всегда.</li>
+  </ol>
+  <div class="warn-box"><b>⚠️ Важно</b>
+    Условия сравнивают поля документа. Чтобы условие по сумме работало, у вида
+    документа должно быть числовое или денежное поле (настраивается в разделе
+    <b>«Виды документов»</b>).</div>
+
+  <h2><span class="n">6</span>Приоритет и «любая организация»</h2>
+  <p>Можно создать общее правило (для любой организации и проекта) и отдельное —
+    более точное — для конкретной организации. Когда подходят оба, побеждает
+    правило с <b>меньшим приоритетом</b> (меньше число = важнее).</p>
+  <div class="tip"><b>💡 Модель замещения</b>
+    Побеждает <b>одно</b> правило целиком — точное заменяет общее, а не
+    добавляется к нему.</div>
+
+  <h2><span class="n">7</span>Частые вопросы</h2>
+  <details class="faq"><summary>Изменил матрицу — что будет с уже запущенными документами?</summary>
+    <p>Ничего. Маршрут фиксируется в момент запуска. Правки матрицы влияют только
+    на <b>новые</b> документы.</p></details>
+  <details class="faq"><summary>Что если для должности нет ни одного сотрудника?</summary>
+    <p>Если участник обязателен — запуск документа заблокируется с понятным
+    сообщением. Можно пометить участника как «Опционально» или «Пропустить,
+    если нет исполнителя».</p></details>
+  <details class="faq"><summary>Как проверить маршрут до запуска?</summary>
+    <p>При создании документа система показывает <b>предпросмотр маршрута</b> —
+    схему с этапами и участниками.</p></details>
+
+  <div class="footer">BPM AL-BINA · Инструкция по матрице согласования</div>
+</div>
+</body>
+</html>

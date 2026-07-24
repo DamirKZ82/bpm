@@ -592,6 +592,87 @@ async def escalate_overdue(session: AsyncSession) -> int:
     return len(tasks)
 
 
+async def add_adhoc_participant(
+    session: AsyncSession,
+    *,
+    process: ProcessInstance,
+    employee_id: uuid.UUID,
+    task_kind: str,
+    deadline_hours: int | None,
+    user: User,
+    ip: str | None,
+) -> ProcessInstance:
+    """Добавить участника «на лету» в текущий этап процесса (ad-hoc,
+    как в Directum/1С:ДО). Слот дописывается в снапшот этого процесса —
+    матрица не затрагивается."""
+    from sqlalchemy.orm.attributes import flag_modified
+    from app.models.enums import EmployeeStatus
+
+    if process.status != ProcessStatus.IN_PROGRESS:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Процесс не в работе")
+    if task_kind not in {k.value for k in TaskKind}:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Неизвестный вид задания")
+
+    employee = await session.get(Employee, employee_id)
+    if employee is None or employee.status != EmployeeStatus.ACTIVE:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Сотрудник не найден или неактивен"
+        )
+
+    tasks = list(
+        await session.scalars(select(Task).where(Task.process_id == process.id))
+    )
+    current = _current_stage(process, tasks)
+    if current is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Нет активного этапа для добавления"
+        )
+    stage_meta, _ = current
+    stage_no = stage_meta["stage_no"]
+    next_order = max((slot["order_in_stage"] for slot in stage_meta["slots"]), default=0) + 1
+
+    stage_meta["slots"].append({
+        "order_in_stage": next_order,
+        "resolver_type": "ADHOC",
+        "task_kind": task_kind,
+        "position_id": None,
+        "position_name": None,
+        "mandatory": "REQUIRED",
+        "deadline_hours": deadline_hours,
+        "assignees": [{
+            "employee_id": str(employee.id),
+            "full_name": employee.full_name,
+            "substitute_for_id": None,
+            "substitute_for_name": None,
+        }],
+        "skipped": False,
+    })
+    flag_modified(process, "route_snapshot")
+
+    session.add(Task(
+        process_id=process.id,
+        stage_no=stage_no,
+        order_in_stage=next_order,
+        task_kind=task_kind,
+        position_id=None,
+        assignee_id=employee.id,
+        status=TaskStatus.PENDING,
+    ))
+    await session.flush()
+    await _audit(
+        session,
+        process_id=process.id,
+        user_id=user.id,
+        action="PARTICIPANT_ADDED",
+        payload={"employee": employee.full_name, "stage_no": stage_no},
+        ip=ip,
+    )
+    await _advance(session, process, ip=ip)
+    await session.commit()
+    await session.refresh(process)
+    return process
+
+
 async def cancel_process(
     session: AsyncSession, *, process: ProcessInstance, user: User, ip: str | None
 ) -> ProcessInstance:

@@ -245,6 +245,50 @@ async def cancel_process(
     return await get_process(process_id, user, session)
 
 
+class AddParticipantRequest(BaseModel):
+    employee_id: uuid.UUID
+    task_kind: str = "APPROVAL"
+    deadline_hours: int | None = None
+
+
+@router.post("/{process_id}/add-participant", response_model=ProcessRead)
+async def add_participant(
+    process_id: uuid.UUID,
+    body: AddParticipantRequest,
+    user: CurrentUser,
+    session: SessionDep,
+    request: Request,
+):
+    """Добавить согласующего/исполнителя на лету в текущий этап.
+    Может: администратор, инициатор или текущий участник процесса."""
+    process = await session.get(ProcessInstance, process_id)
+    if process is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    allowed = UserRole.ADMIN in user.roles or process.initiator_id == user.id
+    if not allowed and user.employee_id is not None:
+        allowed = (
+            await session.scalar(
+                select(Task.id).where(
+                    Task.process_id == process.id,
+                    Task.assignee_id == user.employee_id,
+                    Task.status == TaskStatus.ACTIVE,
+                )
+            )
+        ) is not None
+    if not allowed:
+        raise HTTPException(status.HTTP_403_FORBIDDEN)
+    await process_service.add_adhoc_participant(
+        session,
+        process=process,
+        employee_id=body.employee_id,
+        task_kind=body.task_kind,
+        deadline_hours=body.deadline_hours,
+        user=user,
+        ip=request.client.host if request.client else None,
+    )
+    return await get_process(process_id, user, session)
+
+
 @router.post("/{process_id}/resubmit", response_model=ProcessRead)
 async def resubmit(
     process_id: uuid.UUID, user: CurrentUser, session: SessionDep, request: Request

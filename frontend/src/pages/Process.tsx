@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
+import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import MenuItem from '@mui/material/MenuItem'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -93,6 +95,13 @@ export function ProcessPage() {
   const [closeOpen, setCloseOpen] = useState(false)
   const [closeComment, setCloseComment] = useState('')
 
+  // ad-hoc участник
+  const [addOpen, setAddOpen] = useState(false)
+  const [addEmployee, setAddEmployee] = useState<string | null>(null)
+  const [addKind, setAddKind] = useState('APPROVAL')
+  const [addDeadline, setAddDeadline] = useState('')
+  const [addBusy, setAddBusy] = useState(false)
+
   // обсуждение
   const [comments, setComments] = useState<ProcessCommentItem[]>([])
   const [commentText, setCommentText] = useState('')
@@ -148,6 +157,38 @@ export function ProcessPage() {
       reload()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Ошибка')
+    }
+  }
+
+  const canAddParticipant =
+    active &&
+    (isAdmin ||
+      isInitiator ||
+      process.tasks.some(
+        (t) => t.assignee_id === user?.employee_id && t.status === 'ACTIVE',
+      ))
+
+  const addParticipant = async () => {
+    if (!addEmployee) return
+    setAddBusy(true)
+    try {
+      await api(`/api/processes/${process.id}/add-participant`, {
+        method: 'POST',
+        body: {
+          employee_id: addEmployee,
+          task_kind: addKind,
+          deadline_hours: addDeadline ? Number(addDeadline) : null,
+        },
+      })
+      setAddOpen(false)
+      setAddEmployee(null)
+      setAddDeadline('')
+      setAddKind('APPROVAL')
+      reload()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Ошибка')
+    } finally {
+      setAddBusy(false)
     }
   }
 
@@ -218,12 +259,17 @@ export function ProcessPage() {
               <InfoCell label="Запущен" value={formatDateTime(process.started_at)} />
               <InfoCell label="Завершён" value={formatDateTime(process.completed_at)} />
             </InfoGrid>
-            {(isInitiator || isAdmin) && active && (
+            {((isInitiator || isAdmin) && active) || canAddParticipant ? (
               <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                {isInitiator && (
+                {isInitiator && active && (
                   <Button variant="outlined" onClick={cancel}>Отозвать</Button>
                 )}
-                {isAdmin && (
+                {canAddParticipant && (
+                  <Button variant="outlined" onClick={() => setAddOpen(true)}>
+                    Добавить согласующего
+                  </Button>
+                )}
+                {isAdmin && active && (
                   <Button
                     variant="outlined"
                     color="error"
@@ -233,7 +279,7 @@ export function ProcessPage() {
                   </Button>
                 )}
               </Stack>
-            )}
+            ) : null}
             {(isInitiator || isAdmin) && returned && (
               <Alert
                 severity="warning"
@@ -331,6 +377,11 @@ export function ProcessPage() {
                           {task.task_kind && task.task_kind !== 'APPROVAL' && (
                             <Typography component="span" variant="body2" color="text.secondary">
                               {' '}· {KIND_LABEL[task.task_kind]}
+                            </Typography>
+                          )}
+                          {slot.resolver_type === 'ADHOC' && (
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              {' '}· добавлен
                             </Typography>
                           )}
                           {task.substitute_for_id && (
@@ -446,6 +497,51 @@ export function ProcessPage() {
           </Stack>
         </Paper>
       )}
+
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Добавить согласующего</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Дополнительный участник добавляется в текущий этап только
+            этого процесса — матрица маршрутов не меняется.
+          </Typography>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Autocomplete
+              options={refs.employees}
+              getOptionLabel={(o) => o.full_name}
+              value={refs.employees.find((e) => e.id === addEmployee) ?? null}
+              onChange={(_, v) => setAddEmployee(v?.id ?? null)}
+              renderInput={(params) => <TextField {...params} label="Сотрудник" />}
+            />
+            <TextField
+              select
+              label="Вид задания"
+              value={addKind}
+              onChange={(e) => setAddKind(e.target.value)}
+            >
+              <MenuItem value="APPROVAL">Согласование</MenuItem>
+              <MenuItem value="EXECUTION">Исполнение</MenuItem>
+              <MenuItem value="ACKNOWLEDGEMENT">Ознакомление</MenuItem>
+            </TextField>
+            <TextField
+              label="Срок, ч (необязательно)"
+              type="number"
+              value={addDeadline}
+              onChange={(e) => setAddDeadline(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddOpen(false)}>Отмена</Button>
+          <Button
+            variant="contained"
+            onClick={addParticipant}
+            disabled={addBusy || !addEmployee}
+          >
+            Добавить
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={closeOpen} onClose={() => setCloseOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Принудительное завершение</DialogTitle>

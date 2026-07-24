@@ -71,31 +71,42 @@ async def ensure_vat_rates() -> None:
         await session.commit()
 
 
-# справочник видов операций для заявки на оплату
-OPERATION_TYPES_DICT = "Виды операций"
-DEFAULT_OPERATION_TYPES = [
-    "Заработная плата",
-    "Перечисление налогов",
-    "Прочие",
-    "Перечисление по исполнительным листам",
-    "Подотчёт",
-]
+# предопределённые справочники: имя → список значений
+DEFAULT_DICTIONARIES = {
+    "Виды операций": [
+        "Заработная плата",
+        "Перечисление налогов",
+        "Прочие",
+        "Перечисление по исполнительным листам",
+        "Подотчёт",
+    ],
+    "Виды договоров": [
+        "Договор подряда",
+        "Договор поставки",
+        "Договор оказания услуг",
+    ],
+}
 
 
 async def ensure_operation_types() -> None:
-    """Справочник «Виды операций» — для поля «Вид операции» в заявке на
-    оплату. Создаётся один раз, если ещё нет."""
+    """Предопределённые справочники для заявок (виды операций, виды
+    договоров). Каждый создаётся один раз, если ещё нет."""
     async with async_session() as session:
-        exists = await session.scalar(
-            select(Dictionary.id).where(Dictionary.name == OPERATION_TYPES_DICT)
-        )
-        if exists:
-            return
-        dictionary = Dictionary(name=OPERATION_TYPES_DICT, active=True)
-        session.add(dictionary)
-        await session.flush()
-        for order, name in enumerate(DEFAULT_OPERATION_TYPES):
-            session.add(DictionaryItem(
-                dictionary_id=dictionary.id, name=name, active=True, sort_order=order,
-            ))
-        await session.commit()
+        changed = False
+        for name, items in DEFAULT_DICTIONARIES.items():
+            exists = await session.scalar(
+                select(Dictionary.id).where(Dictionary.name == name)
+            )
+            if exists:
+                continue
+            dictionary = Dictionary(name=name, active=True)
+            session.add(dictionary)
+            await session.flush()
+            for order, item in enumerate(items):
+                session.add(DictionaryItem(
+                    dictionary_id=dictionary.id, name=item,
+                    active=True, sort_order=order,
+                ))
+            changed = True
+        if changed:
+            await session.commit()

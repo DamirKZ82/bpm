@@ -49,6 +49,11 @@ AUDIT_DONE = {
     TaskKind.EXECUTION: "TASK_EXECUTED",
     TaskKind.ACKNOWLEDGEMENT: "TASK_ACKNOWLEDGED",
 }
+# отрицательный результат по виду задания (ознакомление отклонить нельзя)
+AUDIT_FAILED = {
+    TaskKind.APPROVAL: "TASK_REJECTED",
+    TaskKind.EXECUTION: "TASK_NOT_EXECUTED",
+}
 
 
 def utcnow() -> datetime:
@@ -353,7 +358,8 @@ async def complete_task(
         process_id=process.id,
         task_id=task.id,
         user_id=user.id,
-        action=AUDIT_DONE.get(kind, "TASK_APPROVED") if approve else "TASK_REJECTED",
+        action=AUDIT_DONE.get(kind, "TASK_APPROVED") if approve
+        else AUDIT_FAILED.get(kind, "TASK_REJECTED"),
         payload={"comment": comment} if comment else None,
         ip=ip,
     )

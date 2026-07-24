@@ -4,6 +4,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   TASK_REJECTED: 'Отклонено',
   TASK_AUTO_APPROVED: 'Автосогласовано',
   TASK_EXECUTED: 'Исполнено',
+  TASK_NOT_EXECUTED: 'Не выполнено',
   TASK_ACKNOWLEDGED: 'Ознакомлен',
   PROCESS_APPROVED: 'Процесс согласован',
   PROCESS_REJECTED: 'Процесс отклонён',

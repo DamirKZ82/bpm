@@ -1,0 +1,44 @@
+# BPM «под ключ»: база + бэкенд + фронтенд одной командой.
+#   docker compose up -d --build
+# Перед запуском заполните backend/.env (см. backend/.env.example),
+# в нём DB_HOST=db и те же DB_USER/DB_PASS/DB_NAME, что и здесь.
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${DB_NAME:-bpm}
+      POSTGRES_USER: ${DB_USER:-bpm}
+      POSTGRES_PASSWORD: ${DB_PASS:-change-me}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bpm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - backend_storage:/app/storage   # локальные вложения и логотип
+      - backend_logs:/app/logs
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    ports:
+      - "80:80"        # наружу отдаём только фронтенд (он проксирует /api)
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  backend_storage:
+  backend_logs:

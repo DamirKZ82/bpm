@@ -691,7 +691,14 @@ async def _apply_fields(
             )
         )
     }
-    keep: set[uuid.UUID] = set()
+    # сначала удаляем поля, которых нет во входящем наборе, и сбрасываем в БД —
+    # иначе вставка нового поля с тем же кодом ловит конфликт уникальности
+    incoming_ids = {f.id for f in fields if f.id is not None}
+    for row_id, row in existing.items():
+        if row_id not in incoming_ids:
+            await session.delete(row)
+    await session.flush()
+
     for order, field in enumerate(fields):
         cols = (
             [c.model_dump(mode="json") for c in field.columns]
@@ -708,7 +715,6 @@ async def _apply_fields(
             row.required = field.required
             row.columns = cols
             row.sort_order = order
-            keep.add(row.id)
         else:
             session.add(
                 DocumentTypeField(
@@ -724,9 +730,6 @@ async def _apply_fields(
                     sort_order=order,
                 )
             )
-    for row_id, row in existing.items():
-        if row_id not in keep:
-            await session.delete(row)
 
 
 @doc_types_router.post(

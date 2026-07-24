@@ -11,7 +11,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 
 from app.core.db import async_session
-from app.models import DocumentType, VatRate
+from app.models import Dictionary, DictionaryItem, DocumentType, VatRate
 
 # (code по умолчанию, название, префикс номера)
 STANDARD_TYPES = [
@@ -68,4 +68,34 @@ async def ensure_vat_rates() -> None:
             return
         for name, rate, order in DEFAULT_VAT_RATES:
             session.add(VatRate(name=name, rate=rate, active=True, sort_order=order))
+        await session.commit()
+
+
+# справочник видов операций для заявки на оплату
+OPERATION_TYPES_DICT = "Виды операций"
+DEFAULT_OPERATION_TYPES = [
+    "Заработная плата",
+    "Перечисление налогов",
+    "Прочие",
+    "Перечисление по исполнительным листам",
+    "Подотчёт",
+]
+
+
+async def ensure_operation_types() -> None:
+    """Справочник «Виды операций» — для поля «Вид операции» в заявке на
+    оплату. Создаётся один раз, если ещё нет."""
+    async with async_session() as session:
+        exists = await session.scalar(
+            select(Dictionary.id).where(Dictionary.name == OPERATION_TYPES_DICT)
+        )
+        if exists:
+            return
+        dictionary = Dictionary(name=OPERATION_TYPES_DICT, active=True)
+        session.add(dictionary)
+        await session.flush()
+        for order, name in enumerate(DEFAULT_OPERATION_TYPES):
+            session.add(DictionaryItem(
+                dictionary_id=dictionary.id, name=name, active=True, sort_order=order,
+            ))
         await session.commit()

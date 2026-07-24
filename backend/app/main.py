@@ -39,12 +39,14 @@ async def lifespan(_: FastAPI):
     # предопределённые системные виды документов (служебка, договор, оплата)
     try:
         from app.services.bootstrap import (
+            ensure_operation_types,
             ensure_system_document_types,
             ensure_vat_rates,
         )
 
         await ensure_system_document_types()
         await ensure_vat_rates()
+        await ensure_operation_types()
     except Exception as exc:  # noqa: BLE001 — старт не должен падать из-за сида
         get_logger().error(f'{{"event": "bootstrap_failed", "error": "{exc}"}}')
 

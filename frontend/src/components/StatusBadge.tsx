@@ -1,21 +1,29 @@
 import Chip from '@mui/material/Chip'
 import type { ChipProps } from '@mui/material/Chip'
+import { useTranslation } from 'react-i18next'
 import type { ProcessStatus, TaskResult, TaskStatus } from '../api/types'
 
-const PROCESS: Record<ProcessStatus, [string, ChipProps['color']]> = {
-  DRAFT: ['Черновик', 'default'],
-  IN_PROGRESS: ['На согласовании', 'info'],
-  REJECTED: ['Отклонён', 'error'],
-  APPROVED: ['Согласован', 'success'],
-  PENDING_EXPORT: ['Ожидает выгрузки', 'warning'],
-  EXPORTED: ['Выгружен', 'success'],
-  CANCELLED: ['Отозван', 'default'],
-  FORCE_CLOSED: ['Закрыт администратором', 'default'],
+const PROCESS_COLOR: Record<ProcessStatus, ChipProps['color']> = {
+  DRAFT: 'default',
+  IN_PROGRESS: 'info',
+  REJECTED: 'error',
+  APPROVED: 'success',
+  PENDING_EXPORT: 'warning',
+  EXPORTED: 'success',
+  CANCELLED: 'default',
+  FORCE_CLOSED: 'default',
 }
 
 export function ProcessStatusBadge({ status }: { status: ProcessStatus }) {
-  const [label, color] = PROCESS[status] ?? [status, 'default']
-  return <Chip label={label} color={color} size="small" variant="outlined" />
+  const { t } = useTranslation()
+  return (
+    <Chip
+      label={t(`status.${status}`)}
+      color={PROCESS_COLOR[status] ?? 'default'}
+      size="small"
+      variant="outlined"
+    />
+  )
 }
 
 const TASK: Record<string, [string, ChipProps['color']]> = {

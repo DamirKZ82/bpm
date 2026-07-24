@@ -16,6 +16,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { ApiError, api } from '../api/client'
 import type { MyTask } from '../api/types'
 
@@ -28,6 +29,7 @@ function formatDate(value: string | null): string {
 }
 
 export function TasksPage() {
+  const { t } = useTranslation()
   const [tasks, setTasks] = useState<MyTask[] | null>(null)
   const [action, setAction] = useState<{ task: MyTask; approve: boolean } | null>(null)
   const [comment, setComment] = useState('')
@@ -65,21 +67,21 @@ export function TasksPage() {
   return (
     <>
       <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
-        Мне на согласование
+        {t('tasks.title')}
       </Typography>
       <Paper>
         {tasks.length === 0 ? (
           <Typography color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>
-            Активных задач нет
+            {t('tasks.noActive')}
           </Typography>
         ) : (
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Документ</TableCell>
-                <TableCell>Инициатор</TableCell>
-                <TableCell>Поступила</TableCell>
-                <TableCell>Срок</TableCell>
+                <TableCell>{t('tasks.document')}</TableCell>
+                <TableCell>{t('tasks.initiator')}</TableCell>
+                <TableCell>{t('tasks.received')}</TableCell>
+                <TableCell>{t('tasks.due')}</TableCell>
                 <TableCell align="right" width={230} />
               </TableRow>
             </TableHead>
@@ -92,7 +94,7 @@ export function TasksPage() {
                     </Link>
                     {task.substitute_for_id && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        как заместитель
+                        {t('tasks.asSubstitute')}
                       </Typography>
                     )}
                   </TableCell>
@@ -109,7 +111,7 @@ export function TasksPage() {
                     {formatDate(task.due_at)}
                     {task.due_at !== null &&
                       new Date(task.due_at + 'Z').getTime() < Date.now() &&
-                      ' · просрочено'}
+                      ` · ${t('tasks.overdue')}`}
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
@@ -118,7 +120,7 @@ export function TasksPage() {
                         variant="contained"
                         onClick={() => { setAction({ task, approve: true }); setComment(''); setError('') }}
                       >
-                        Согласовать
+                        {t('common.approve')}
                       </Button>
                       <Button
                         size="small"
@@ -126,7 +128,7 @@ export function TasksPage() {
                         color="error"
                         onClick={() => { setAction({ task, approve: false }); setComment(''); setError('') }}
                       >
-                        Отклонить
+                        {t('common.reject')}
                       </Button>
                     </Stack>
                   </TableCell>
@@ -139,14 +141,14 @@ export function TasksPage() {
 
       <Dialog open={action !== null} onClose={() => setAction(null)} fullWidth maxWidth="sm">
         <DialogTitle>
-          {action?.approve ? 'Согласовать документ' : 'Отклонить документ'}
+          {action?.approve ? t('tasks.approveTitle') : t('tasks.rejectTitle')}
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {action?.task.subject}
           </Typography>
           <TextField
-            label={`Комментарий ${action?.approve ? '(необязательно)' : '(обязательно)'}`}
+            label={action?.approve ? t('tasks.commentOptional') : t('tasks.commentRequired')}
             multiline
             minRows={3}
             value={comment}
@@ -156,14 +158,14 @@ export function TasksPage() {
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAction(null)}>Отмена</Button>
+          <Button onClick={() => setAction(null)}>{t('common.cancel')}</Button>
           <Button
             variant="contained"
             color={action?.approve ? 'primary' : 'error'}
             onClick={submit}
             disabled={busy || (action !== null && !action.approve && !comment.trim())}
           >
-            {action?.approve ? 'Согласовать' : 'Отклонить'}
+            {action?.approve ? t('common.approve') : t('common.reject')}
           </Button>
         </DialogActions>
       </Dialog>

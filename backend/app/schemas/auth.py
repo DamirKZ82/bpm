@@ -20,7 +20,14 @@ class UserRead(BaseModel):
     status: UserStatus
     roles: list[str]
     employee_id: uuid.UUID | None
+    locale: str
+    theme: str
     last_login_at: datetime | None
+
+
+class PreferencesUpdate(BaseModel):
+    locale: str | None = None
+    theme: str | None = None
 
 
 class TokenResponse(BaseModel):

@@ -117,5 +117,10 @@ class User(UUIDPKMixin, Base):
     # Привязка Telegram для уведомлений и согласования с телефона
     telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger)
     telegram_link_code: Mapped[str | None] = mapped_column(String(20))
+    # Персональные настройки интерфейса
+    locale: Mapped[str] = mapped_column(String(5), default="uz", server_default="uz")
+    theme: Mapped[str] = mapped_column(
+        String(10), default="light", server_default="light"
+    )
     last_login_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)

@@ -8,7 +8,12 @@ from app.core.config import settings
 from app.core.security import create_access_token
 from app.models import User
 from app.models.enums import UserStatus
-from app.schemas.auth import DevLoginRequest, TokenResponse, UserRead
+from app.schemas.auth import (
+    DevLoginRequest,
+    PreferencesUpdate,
+    TokenResponse,
+    UserRead,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -36,4 +41,22 @@ async def dev_login(body: DevLoginRequest, session: SessionDep):
 
 @router.get("/me", response_model=UserRead)
 async def me(user: CurrentUser):
+    return user
+
+
+@router.patch("/preferences", response_model=UserRead)
+async def update_preferences(
+    body: PreferencesUpdate, user: CurrentUser, session: SessionDep
+):
+    """Личные настройки интерфейса: язык (uz/ru/en) и тема (light/dark)."""
+    if body.locale is not None:
+        if body.locale not in ("uz", "ru", "en"):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Неизвестный язык")
+        user.locale = body.locale
+    if body.theme is not None:
+        if body.theme not in ("light", "dark"):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Неизвестная тема")
+        user.theme = body.theme
+    await session.commit()
+    await session.refresh(user)
     return user

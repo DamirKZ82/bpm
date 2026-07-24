@@ -23,10 +23,18 @@ import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MenuIcon from '@mui/icons-material/Menu'
 import TaskAltIcon from '@mui/icons-material/TaskAlt'
+import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
+import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
+import TranslateIcon from '@mui/icons-material/Translate'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { api } from '../api/client'
 import type { DocumentTypeRef } from '../api/types'
 import { useAuth } from '../auth'
+import { LANGUAGES } from '../i18n'
+import { usePreferences } from '../preferences'
 import { Logo } from './Logo'
 import { NotificationsBell } from './NotificationsBell'
 import { TelegramLinkDialog } from './TelegramLinkDialog'
@@ -40,9 +48,8 @@ export interface Counters {
 const WIDTH_OPEN = 278
 const WIDTH_COLLAPSED = 68
 
-// цвета текста меню: заметно темнее, чем text.secondary
-const NAV_TEXT = '#3d4658'
-const NAV_LEAF_TEXT = '#4b5568'
+const NAV_TEXT = 'text.primary'
+const NAV_LEAF_TEXT = 'text.secondary'
 
 interface Leaf {
   to: string
@@ -58,16 +65,17 @@ interface Group {
   children: Leaf[]
 }
 
-const DIRECTORY_LEAVES: Leaf[] = [
-  { to: '/admin/organizations', label: 'Организации' },
-  { to: '/admin/departments', label: 'Подразделения' },
-  { to: '/admin/positions', label: 'Должности' },
-  { to: '/admin/employees', label: 'Сотрудники' },
-  { to: '/admin/employments', label: 'Трудоустройства' },
-  { to: '/admin/projects', label: 'Проекты' },
-  { to: '/admin/project-assignments', label: 'Назначения на проекты' },
-  { to: '/admin/absences', label: 'Отсутствия' },
-  { to: '/admin/substitutions', label: 'Замещения' },
+// [путь, ключ перевода] справочников
+const DIRECTORY_LEAVES: [string, string][] = [
+  ['/admin/organizations', 'nav.organizations'],
+  ['/admin/departments', 'nav.departments'],
+  ['/admin/positions', 'nav.positions'],
+  ['/admin/employees', 'nav.employees'],
+  ['/admin/employments', 'nav.employments'],
+  ['/admin/projects', 'nav.projects'],
+  ['/admin/project-assignments', 'nav.projectAssignments'],
+  ['/admin/absences', 'nav.absences'],
+  ['/admin/substitutions', 'nav.substitutions'],
 ]
 
 function leafSelected(leaf: Leaf, path: string): boolean {
@@ -87,8 +95,11 @@ const itemSx = {
 
 export function Layout() {
   const { user, loading, logout } = useAuth()
+  const { t } = useTranslation()
+  const { mode, locale, setMode, setLocale } = usePreferences()
   const location = useLocation()
   const navigate = useNavigate()
+  const [langAnchor, setLangAnchor] = useState<HTMLElement | null>(null)
 
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('bpm_nav_collapsed') === '1',
@@ -126,47 +137,47 @@ export function Layout() {
     const result: Group[] = [
       {
         key: 'documents',
-        label: 'Документы',
+        label: t('nav.documents'),
         icon: <DescriptionOutlinedIcon fontSize="small" />,
         children: docTypes.length
-          ? docTypes.map((t, index) => ({
-              to: `/documents/${t.code}`,
-              label: t.name,
+          ? docTypes.map((dt, index) => ({
+              to: `/documents/${dt.code}`,
+              label: dt.name,  // название вида — пользовательские данные
               also: index === 0 ? ['/process'] : undefined,
             }))
-          : [{ to: '/documents/MEMO', label: 'Служебные записки' }],
+          : [{ to: '/documents/MEMO', label: t('nav.documents') }],
       },
     ]
     if (isAdmin) {
       result.push({
         key: 'directories',
-        label: 'Справочники',
+        label: t('nav.references'),
         icon: <FolderOutlinedIcon fontSize="small" />,
         children: [
-          ...DIRECTORY_LEAVES,
-          { to: '/admin/dictionaries', label: 'Пользовательские справочники' },
+          ...DIRECTORY_LEAVES.map(([to, key]) => ({ to, label: t(key) })),
+          { to: '/admin/dictionaries', label: t('nav.dictionaries') },
         ],
       })
     }
     if (isAdmin || isMatrixEditor) {
       const children: Leaf[] = []
-      if (isAdmin) children.push({ to: '/admin/document-types', label: 'Виды документов' })
-      if (isAdmin) children.push({ to: '/admin/users', label: 'Пользователи' })
-      if (isAdmin) children.push({ to: '/admin/exchange', label: 'Обмен с 1С' })
-      children.push({ to: '/admin/route-rules', label: 'Матрица согласования' })
-      if (isAdmin) children.push({ to: '/admin/overdue', label: 'Просроченные задачи' })
-      if (isAdmin) children.push({ to: '/admin/audit', label: 'Журнал аудита' })
-      if (isAdmin) children.push({ to: '/admin/errors', label: 'Ошибки' })
-      if (isAdmin) children.push({ to: '/admin/settings', label: 'Настройки BPM' })
+      if (isAdmin) children.push({ to: '/admin/document-types', label: t('nav.documentTypes') })
+      if (isAdmin) children.push({ to: '/admin/users', label: t('nav.users') })
+      if (isAdmin) children.push({ to: '/admin/exchange', label: t('nav.exchange') })
+      children.push({ to: '/admin/route-rules', label: t('nav.routeMatrix') })
+      if (isAdmin) children.push({ to: '/admin/overdue', label: t('nav.overdue') })
+      if (isAdmin) children.push({ to: '/admin/audit', label: t('nav.audit') })
+      if (isAdmin) children.push({ to: '/admin/errors', label: t('nav.errors') })
+      if (isAdmin) children.push({ to: '/admin/settings', label: t('nav.settings') })
       result.push({
         key: 'administration',
-        label: 'Администрирование',
+        label: t('nav.administration'),
         icon: <AdminPanelSettingsOutlinedIcon fontSize="small" />,
         children,
       })
     }
     return result
-  }, [isAdmin, isMatrixEditor, docTypes])
+  }, [isAdmin, isMatrixEditor, docTypes, t])
 
   const [open, setOpen] = useState<Record<string, boolean>>({ documents: true })
 
@@ -210,7 +221,8 @@ export function Layout() {
             width,
             overflowX: 'hidden',
             transition: 'width 0.2s',
-            bgcolor: '#f1e9d6',
+            bgcolor: (theme) =>
+              theme.palette.mode === 'dark' ? '#2a251d' : '#f1e9d6',
             borderRight: '1px solid',
             borderColor: 'divider',
           },
@@ -263,7 +275,7 @@ export function Layout() {
         )}
 
         <List sx={{ flexGrow: 1, pt: 0 }}>
-          <Tooltip title={collapsed ? 'Главная' : ''} placement="right">
+          <Tooltip title={collapsed ? t('nav.home') : ''} placement="right">
             <ListItemButton
               component={NavLink}
               to="/"
@@ -275,13 +287,13 @@ export function Layout() {
               </ListItemIcon>
               {!collapsed && (
                 <ListItemText
-                  primary="Главная"
+                  primary={t('nav.home')}
                   slotProps={{ primary: { sx: { fontWeight: 600 } } }}
                 />
               )}
             </ListItemButton>
           </Tooltip>
-          <Tooltip title={collapsed ? 'Мои задачи' : ''} placement="right">
+          <Tooltip title={collapsed ? t('nav.tasks') : ''} placement="right">
             <ListItemButton
               component={NavLink}
               to="/tasks"
@@ -301,7 +313,7 @@ export function Layout() {
               </ListItemIcon>
               {!collapsed && (
                 <ListItemText
-                  primary="Мои задачи"
+                  primary={t('nav.tasks')}
                   slotProps={{ primary: { sx: { fontWeight: 600 } } }}
                 />
               )}
@@ -450,15 +462,51 @@ export function Layout() {
               <Typography variant="body2" noWrap sx={{ fontWeight: 600, color: NAV_TEXT }}>
                 {user.display_name ?? user.ad_sam_account_name}
               </Typography>
-              {user.employee_id === null && (
-                <Typography variant="caption" color="text.secondary">
-                  Не сопоставлен с сотрудником
-                </Typography>
-              )}
             </Box>
           )}
+          {!collapsed && (
+            <Tooltip title={t('prefs.theme')}>
+              <IconButton
+                size="small"
+                onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
+                sx={{ color: NAV_TEXT }}
+              >
+                {mode === 'dark' ? (
+                  <LightModeOutlinedIcon fontSize="small" />
+                ) : (
+                  <DarkModeOutlinedIcon fontSize="small" />
+                )}
+              </IconButton>
+            </Tooltip>
+          )}
+          {!collapsed && (
+            <Tooltip title={t('prefs.language')}>
+              <IconButton
+                size="small"
+                onClick={(e) => setLangAnchor(e.currentTarget)}
+                sx={{ color: NAV_TEXT }}
+              >
+                <TranslateIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Menu
+            anchorEl={langAnchor}
+            open={langAnchor !== null}
+            onClose={() => setLangAnchor(null)}
+          >
+            {LANGUAGES.map((lang) => (
+              <MenuItem
+                key={lang.code}
+                selected={locale === lang.code}
+                onClick={() => { setLocale(lang.code); setLangAnchor(null) }}
+              >
+                {lang.label}
+              </MenuItem>
+            ))}
+          </Menu>
           {!collapsed && <TelegramLinkDialog />}
-          <Tooltip title="Выйти">
+          <Tooltip title={t('common.logout')}>
             <IconButton size="small" onClick={logout} sx={{ color: NAV_TEXT }}>
               <LogoutIcon fontSize="small" />
             </IconButton>

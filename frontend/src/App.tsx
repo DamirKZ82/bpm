@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth'
+import { PreferencesProvider } from './preferences'
 import { Layout } from './components/Layout'
 import { AdminPage } from './pages/Admin'
 import { DashboardPage } from './pages/Dashboard'
@@ -13,6 +14,7 @@ import { TasksPage } from './pages/Tasks'
 export default function App() {
   return (
     <AuthProvider>
+      <PreferencesProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -30,6 +32,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </PreferencesProvider>
     </AuthProvider>
   )
 }

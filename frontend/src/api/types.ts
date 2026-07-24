@@ -13,6 +13,8 @@ export interface User {
   status: 'ACTIVE' | 'DISABLED'
   roles: string[]
   employee_id: string | null
+  locale: string
+  theme: string
 }
 
 export interface ProcessBrief {

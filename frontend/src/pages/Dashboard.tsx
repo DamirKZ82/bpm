@@ -10,6 +10,7 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { api } from '../api/client'
 import type { DocumentItem, MyTask } from '../api/types'
 import { ProcessStatusBadge } from '../components/StatusBadge'
@@ -58,6 +59,7 @@ function StatCard({
 
 export function DashboardPage() {
   const { user } = useAuth()
+  const { t } = useTranslation()
   const [counters, setCounters] = useState<Counters | null>(null)
   const [tasks, setTasks] = useState<MyTask[]>([])
   const [documents, setDocuments] = useState<DocumentItem[]>([])
@@ -81,7 +83,7 @@ export function DashboardPage() {
   return (
     <>
       <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
-        Главная
+        {t('dashboard.title')}
       </Typography>
 
       <Box
@@ -93,16 +95,16 @@ export function DashboardPage() {
             'repeat(auto-fill, minmax(max(200px, calc(25% - 16px)), 1fr))',
         }}
       >
-        <StatCard title="Мне на согласование" value={counters.active_tasks} to="/tasks" />
+        <StatCard title={t('dashboard.toApprove')} value={counters.active_tasks} to="/tasks" />
         <StatCard
-          title="Просрочено у меня"
+          title={t('dashboard.overdueMine')}
           value={counters.overdue_tasks}
           to="/tasks"
           color={counters.overdue_tasks > 0 ? '#c62828' : undefined}
         />
-        <StatCard title="Мои документы в работе" value={inProgress} />
+        <StatCard title={t('dashboard.inWork')} value={inProgress} />
         <StatCard
-          title="Отклонённые (требуют внимания)"
+          title={t('dashboard.rejected')}
           value={rejected}
           color={rejected > 0 ? '#c62828' : undefined}
         />
@@ -120,20 +122,20 @@ export function DashboardPage() {
             direction="row"
             sx={{ mb: 1, alignItems: 'center', justifyContent: 'space-between' }}
           >
-            <Typography variant="h6">Мои задачи</Typography>
-            <Link component={RouterLink} to="/tasks">все</Link>
+            <Typography variant="h6">{t('dashboard.myTasks')}</Typography>
+            <Link component={RouterLink} to="/tasks">{t('doc.all')}</Link>
           </Stack>
           {tasks.length === 0 ? (
             <Typography color="text.secondary" sx={{ py: 2 }}>
-              Активных задач нет
+              {t('dashboard.noTasks')}
             </Typography>
           ) : (
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Документ</TableCell>
-                  <TableCell>Инициатор</TableCell>
-                  <TableCell>Срок</TableCell>
+                  <TableCell>{t('tasks.document')}</TableCell>
+                  <TableCell>{t('tasks.initiator')}</TableCell>
+                  <TableCell>{t('tasks.due')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -151,7 +153,7 @@ export function DashboardPage() {
                       <TableCell>{task.initiator_name ?? '—'}</TableCell>
                       <TableCell sx={overdue ? { color: 'error.main', fontWeight: 600 } : undefined}>
                         {formatDateTime(task.due_at)}
-                        {overdue && ' · просрочено'}
+                        {overdue && ` · ${t('tasks.overdue')}`}
                       </TableCell>
                     </TableRow>
                   )
@@ -166,19 +168,19 @@ export function DashboardPage() {
             direction="row"
             sx={{ mb: 1, alignItems: 'center', justifyContent: 'space-between' }}
           >
-            <Typography variant="h6">Мои последние документы</Typography>
+            <Typography variant="h6">{t('dashboard.lastDocs')}</Typography>
           </Stack>
           {documents.length === 0 ? (
             <Typography color="text.secondary" sx={{ py: 2 }}>
-              Документов пока нет
+              {t('dashboard.noDocs')}
             </Typography>
           ) : (
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Номер</TableCell>
-                  <TableCell>Тема</TableCell>
-                  <TableCell>Статус</TableCell>
+                  <TableCell>{t('doc.number')}</TableCell>
+                  <TableCell>{t('doc.subject')}</TableCell>
+                  <TableCell>{t('doc.status')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -202,7 +204,7 @@ export function DashboardPage() {
                         <ProcessStatusBadge status={document.process.status} />
                       ) : (
                         <Typography variant="caption" color="text.secondary">
-                          черновик
+                          {t('doc.draft')}
                         </Typography>
                       )}
                     </TableCell>

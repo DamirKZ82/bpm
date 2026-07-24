@@ -6,12 +6,14 @@ import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth'
 import { Logo } from '../components/Logo'
 
 export function LoginPage() {
   const { login } = useAuth()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [error, setError] = useState('')
@@ -46,13 +48,13 @@ export function LoginPage() {
           <Logo height={38} />
         </Box>
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
-          Вход в систему
+          {t('login.title')}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Dev-режим: вход по имени пользователя без пароля.
+          {t('login.subtitle')}
         </Typography>
         <TextField
-          label="Имя пользователя"
+          label={t('login.username')}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="admin"
@@ -61,7 +63,7 @@ export function LoginPage() {
         />
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Button type="submit" variant="contained" fullWidth disabled={busy}>
-          Войти
+          {t('common.login')}
         </Button>
       </Paper>
     </Box>

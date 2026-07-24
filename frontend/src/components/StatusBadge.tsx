@@ -6,6 +6,7 @@ import type { ProcessStatus, TaskResult, TaskStatus } from '../api/types'
 const PROCESS_COLOR: Record<ProcessStatus, ChipProps['color']> = {
   DRAFT: 'default',
   IN_PROGRESS: 'info',
+  RETURNED: 'warning',
   REJECTED: 'error',
   APPROVED: 'success',
   PENDING_EXPORT: 'warning',
@@ -36,6 +37,7 @@ const TASK: Record<string, [string, ChipProps['color']]> = {
   'COMPLETED:REJECTED': ['Отклонено', 'error'],
   'COMPLETED:EXECUTED': ['Исполнено', 'success'],
   'COMPLETED:ACKNOWLEDGED': ['Ознакомлен', 'success'],
+  'COMPLETED:RETURNED': ['Возвращено на доработку', 'warning'],
 }
 
 export function TaskStatusBadge({

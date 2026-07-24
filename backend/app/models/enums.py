@@ -54,6 +54,7 @@ class ProcessStatus(StrEnum):
 
     DRAFT = "DRAFT"
     IN_PROGRESS = "IN_PROGRESS"
+    RETURNED = "RETURNED"          # возвращён инициатору на доработку (ТЗ §6.3)
     REJECTED = "REJECTED"
     APPROVED = "APPROVED"
     PENDING_EXPORT = "PENDING_EXPORT"
@@ -84,6 +85,7 @@ class TaskResult(StrEnum):
     AUTO_APPROVED = "AUTO_APPROVED"  # совпадение с инициатором/предыдущим этапом
     EXECUTED = "EXECUTED"            # задание исполнено
     ACKNOWLEDGED = "ACKNOWLEDGED"    # с документом ознакомлен
+    RETURNED = "RETURNED"            # возвращено инициатору на доработку
 
 
 class UserRole(StrEnum):

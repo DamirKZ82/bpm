@@ -245,6 +245,25 @@ async def cancel_process(
     return await get_process(process_id, user, session)
 
 
+@router.post("/{process_id}/resubmit", response_model=ProcessRead)
+async def resubmit(
+    process_id: uuid.UUID, user: CurrentUser, session: SessionDep, request: Request
+):
+    """Отправить снова после доработки (инициатор)."""
+    process = await session.get(ProcessInstance, process_id)
+    if process is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    if process.initiator_id != user.id and UserRole.ADMIN not in user.roles:
+        raise HTTPException(status.HTTP_403_FORBIDDEN)
+    await process_service.resubmit_process(
+        session,
+        process=process,
+        user=user,
+        ip=request.client.host if request.client else None,
+    )
+    return await get_process(process_id, user, session)
+
+
 @router.post("/{process_id}/force-close", response_model=ProcessRead)
 async def force_close(
     process_id: uuid.UUID,

@@ -22,6 +22,8 @@ import type { MyTask, TaskKind } from '../api/types'
 
 const kindOf = (task: MyTask): TaskKind => task.task_kind ?? 'APPROVAL'
 
+type ActionMode = 'approve' | 'reject' | 'return'
+
 function formatDate(value: string | null): string {
   if (!value) return '—'
   return new Date(value + 'Z').toLocaleString('ru-RU', {
@@ -33,7 +35,7 @@ function formatDate(value: string | null): string {
 export function TasksPage() {
   const { t } = useTranslation()
   const [tasks, setTasks] = useState<MyTask[] | null>(null)
-  const [action, setAction] = useState<{ task: MyTask; approve: boolean } | null>(null)
+  const [action, setAction] = useState<{ task: MyTask; mode: ActionMode } | null>(null)
   const [comment, setComment] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -49,8 +51,7 @@ export function TasksPage() {
     setBusy(true)
     setError('')
     try {
-      const verb = action.approve ? 'approve' : 'reject'
-      await api(`/api/tasks/${action.task.id}/${verb}`, {
+      await api(`/api/tasks/${action.task.id}/${action.mode}`, {
         method: 'POST',
         body: { comment: comment.trim() || null },
       })
@@ -65,6 +66,11 @@ export function TasksPage() {
   }
 
   if (tasks === null) return null
+
+  // подпись действия: согласовать/исполнено, отклонить/не выполнено, на доработку
+  const actionLabel = (mode: ActionMode, task: MyTask) =>
+    mode === 'return' ? t('tasks.returnBtn') : t(`tasks.${mode === 'approve' ? 'do' : 'deny'}${kindOf(task)}`)
+  const needsComment = action !== null && action.mode !== 'approve'
 
   return (
     <>
@@ -122,20 +128,30 @@ export function TasksPage() {
                       <Button
                         size="small"
                         variant="contained"
-                        onClick={() => { setAction({ task, approve: true }); setComment(''); setError('') }}
+                        onClick={() => { setAction({ task, mode: 'approve' }); setComment(''); setError('') }}
                       >
                         {t(`tasks.do${kindOf(task)}`)}
                       </Button>
-                      {/* ознакомление нельзя отклонить — только подтвердить */}
+                      {/* ознакомление нельзя отклонить/вернуть — только подтвердить */}
                       {kindOf(task) !== 'ACKNOWLEDGEMENT' && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="error"
-                          onClick={() => { setAction({ task, approve: false }); setComment(''); setError('') }}
-                        >
-                          {t(`tasks.deny${kindOf(task)}`)}
-                        </Button>
+                        <>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="warning"
+                            onClick={() => { setAction({ task, mode: 'return' }); setComment(''); setError('') }}
+                          >
+                            {t('tasks.returnBtn')}
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            onClick={() => { setAction({ task, mode: 'reject' }); setComment(''); setError('') }}
+                          >
+                            {t(`tasks.deny${kindOf(task)}`)}
+                          </Button>
+                        </>
                       )}
                     </Stack>
                   </TableCell>
@@ -148,16 +164,20 @@ export function TasksPage() {
 
       <Dialog open={action !== null} onClose={() => setAction(null)} fullWidth maxWidth="sm">
         <DialogTitle>
-          {action
-            ? `${t(action.approve ? `tasks.do${kindOf(action.task)}` : `tasks.deny${kindOf(action.task)}`)}: ${t(`tasks.kind${kindOf(action.task)}`).toLowerCase()}`
-            : ''}
+          {action ? actionLabel(action.mode, action.task) : ''}
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {action?.task.subject}
           </Typography>
           <TextField
-            label={action?.approve ? t('tasks.commentOptional') : t('tasks.commentRequired')}
+            label={
+              action?.mode === 'return'
+                ? t('tasks.returnHint')
+                : needsComment
+                  ? t('tasks.commentRequired')
+                  : t('tasks.commentOptional')
+            }
             multiline
             minRows={3}
             value={comment}
@@ -170,13 +190,17 @@ export function TasksPage() {
           <Button onClick={() => setAction(null)}>{t('common.cancel')}</Button>
           <Button
             variant="contained"
-            color={action?.approve ? 'primary' : 'error'}
+            color={
+              action?.mode === 'approve'
+                ? 'primary'
+                : action?.mode === 'return'
+                  ? 'warning'
+                  : 'error'
+            }
             onClick={submit}
-            disabled={busy || (action !== null && !action.approve && !comment.trim())}
+            disabled={busy || (needsComment && !comment.trim())}
           >
-            {action
-              ? t(action.approve ? `tasks.do${kindOf(action.task)}` : `tasks.deny${kindOf(action.task)}`)
-              : ''}
+            {action ? actionLabel(action.mode, action.task) : ''}
           </Button>
         </DialogActions>
       </Dialog>

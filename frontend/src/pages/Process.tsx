@@ -139,11 +139,21 @@ export function ProcessPage() {
   const isAdmin = user?.roles.includes('ADMIN') ?? false
   const isInitiator = user?.id === process.initiator_id
   const active = process.status === 'IN_PROGRESS'
+  const returned = process.status === 'RETURNED'
 
   const cancel = async () => {
     if (!confirm('Отозвать документ с согласования?')) return
     try {
       await api(`/api/processes/${process.id}/cancel`, { method: 'POST' })
+      reload()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Ошибка')
+    }
+  }
+
+  const resubmit = async () => {
+    try {
+      await api(`/api/processes/${process.id}/resubmit`, { method: 'POST' })
       reload()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Ошибка')
@@ -223,6 +233,21 @@ export function ProcessPage() {
                   </Button>
                 )}
               </Stack>
+            )}
+            {(isInitiator || isAdmin) && returned && (
+              <Alert
+                severity="warning"
+                sx={{ mt: 2 }}
+                action={
+                  <Button color="inherit" size="small" onClick={resubmit}>
+                    Отправить снова
+                  </Button>
+                }
+              >
+                Документ возвращён на доработку. Внесите правки на странице
+                документа и отправьте снова — согласование продолжится
+                с этапа возврата.
+              </Alert>
             )}
           </Paper>
 

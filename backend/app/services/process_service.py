@@ -390,6 +390,134 @@ async def complete_task(
     return process
 
 
+def _make_task_from_slot(
+    process_id: uuid.UUID, stage_no: int, slot: dict, assignee: dict
+) -> Task:
+    """Задача из слота снапшота (общий код старта и повторной отправки)."""
+    return Task(
+        process_id=process_id,
+        stage_no=stage_no,
+        order_in_stage=slot["order_in_stage"],
+        task_kind=slot.get("task_kind") or TaskKind.APPROVAL,
+        position_id=uuid.UUID(slot["position_id"]) if slot["position_id"] else None,
+        assignee_id=uuid.UUID(assignee["employee_id"]),
+        substitute_for_id=(
+            uuid.UUID(assignee["substitute_for_id"])
+            if assignee.get("substitute_for_id")
+            else None
+        ),
+        status=TaskStatus.PENDING,
+    )
+
+
+async def return_for_rework(
+    session: AsyncSession,
+    *,
+    task: Task,
+    user: User,
+    comment: str | None,
+    ip: str | None,
+) -> ProcessInstance:
+    """Возврат инициатору на доработку: документ правится и отправляется
+    снова, возобновляясь с этого этапа, а не с начала маршрута (ТЗ §6.3)."""
+    if task.status != TaskStatus.ACTIVE:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Задача не активна")
+    if user.employee_id is None or task.assignee_id != user.employee_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Задача назначена не вам")
+    if not (comment and comment.strip()):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Укажите, что нужно доработать",
+        )
+    process = await session.get(ProcessInstance, task.process_id)
+    if process.status != ProcessStatus.IN_PROGRESS:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Процесс уже завершён")
+
+    task.status = TaskStatus.COMPLETED
+    task.result = TaskResult.RETURNED
+    task.comment = comment
+    task.completed_at = utcnow()
+    await _audit(
+        session,
+        process_id=process.id,
+        task_id=task.id,
+        user_id=user.id,
+        action="TASK_RETURNED",
+        payload={"comment": comment},
+        ip=ip,
+    )
+    # снять остальные открытые задачи; этап возврата возобновится при отправке
+    for other in await session.scalars(
+        select(Task).where(
+            Task.process_id == process.id,
+            Task.status.in_(OPEN_TASK_STATUSES),
+            Task.id != task.id,
+        )
+    ):
+        other.status = TaskStatus.CANCELLED
+    process.status = ProcessStatus.RETURNED
+    process.rework_stage_no = task.stage_no
+    await _audit(
+        session, process_id=process.id, action="PROCESS_RETURNED", user_id=user.id
+    )
+    await _notify_initiator(
+        session, process, title="Документ возвращён на доработку", body=comment
+    )
+    await session.commit()
+    await session.refresh(process)
+    return process
+
+
+async def resubmit_process(
+    session: AsyncSession, *, process: ProcessInstance, user: User, ip: str | None
+) -> ProcessInstance:
+    """Повторная отправка после доработки: этапы до точки возврата
+    сохраняют свои визы, этап возврата и последующие пересоздаются."""
+    if process.initiator_id != user.id and process.status != ProcessStatus.RETURNED:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Отправить может инициатор")
+    if process.status != ProcessStatus.RETURNED:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Документ не на доработке"
+        )
+    rework = process.rework_stage_no or 1
+    # снять остатки задач возобновляемых этапов и создать заново из снапшота
+    for task in await session.scalars(
+        select(Task).where(
+            Task.process_id == process.id, Task.stage_no >= rework
+        )
+    ):
+        if task.status in OPEN_TASK_STATUSES:
+            task.status = TaskStatus.CANCELLED
+    for stage in _snapshot_stages(process):
+        if stage["stage_no"] < rework:
+            continue
+        for slot in stage["slots"]:
+            if slot.get("skipped"):
+                continue
+            for assignee in slot["assignees"]:
+                session.add(
+                    _make_task_from_slot(
+                        process.id, stage["stage_no"], slot, assignee
+                    )
+                )
+    process.status = ProcessStatus.IN_PROGRESS
+    process.rework_stage_no = None
+    process.completed_at = None
+    await session.flush()
+    await _audit(
+        session,
+        process_id=process.id,
+        action="PROCESS_RESUBMITTED",
+        user_id=user.id,
+        payload={"from_stage": rework},
+        ip=ip,
+    )
+    await _advance(session, process, ip=ip)
+    await session.commit()
+    await session.refresh(process)
+    return process
+
+
 async def cancel_process(
     session: AsyncSession, *, process: ProcessInstance, user: User, ip: str | None
 ) -> ProcessInstance:

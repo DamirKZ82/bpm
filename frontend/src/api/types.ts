@@ -1,10 +1,11 @@
 export type ProcessStatus =
-  | 'DRAFT' | 'IN_PROGRESS' | 'REJECTED' | 'APPROVED'
+  | 'DRAFT' | 'IN_PROGRESS' | 'RETURNED' | 'REJECTED' | 'APPROVED'
   | 'PENDING_EXPORT' | 'EXPORTED' | 'CANCELLED' | 'FORCE_CLOSED'
 
 export type TaskStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'SKIPPED' | 'CANCELLED'
 export type TaskResult =
   | 'APPROVED' | 'REJECTED' | 'AUTO_APPROVED' | 'EXECUTED' | 'ACKNOWLEDGED'
+  | 'RETURNED'
 export type TaskKind = 'APPROVAL' | 'EXECUTION' | 'ACKNOWLEDGEMENT'
 
 export interface User {

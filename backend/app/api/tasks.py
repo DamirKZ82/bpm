@@ -89,3 +89,21 @@ async def reject_task(
     )
     await session.refresh(task)
     return task
+
+
+@router.post("/{task_id}/return", response_model=TaskRead)
+async def return_task(
+    task_id: uuid.UUID, body: TaskAction, user: CurrentUser,
+    session: SessionDep, request: Request,
+):
+    """Вернуть документ инициатору на доработку (не отклонение)."""
+    task = await _get_task(session, task_id)
+    await process_service.return_for_rework(
+        session,
+        task=task,
+        user=user,
+        comment=body.comment,
+        ip=request.client.host if request.client else None,
+    )
+    await session.refresh(task)
+    return task

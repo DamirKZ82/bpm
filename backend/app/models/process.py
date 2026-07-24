@@ -24,6 +24,8 @@ class ProcessInstance(UUIDPKMixin, Base):
     # Маршрут фиксируется на момент старта: изменение матрицы
     # не влияет на запущенные процессы (ТЗ §4.5)
     route_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # этап, с которого возобновлять после доработки; None вне доработки
+    rework_stage_no: Mapped[int | None]
     started_at: Mapped[datetime | None]
     completed_at: Mapped[datetime | None]
 

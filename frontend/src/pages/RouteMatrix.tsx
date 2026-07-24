@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
-import HelpOutlineIcon from '@mui/icons-material/HelpOutlined'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -17,6 +16,7 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
+import { HelpButton } from '../components/HelpButton'
 import type { DocumentTypeRef, OrganizationRef, ProjectRef } from '../api/types'
 
 const RESOLVER_TYPES = [
@@ -257,13 +257,7 @@ export function RouteMatrixPage() {
           </Typography>
         </div>
         <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            startIcon={<HelpOutlineIcon />}
-            onClick={() => window.open('/help/route-matrix.html', '_blank', 'noopener')}
-          >
-            Инструкция
-          </Button>
+          <HelpButton href="/help/route-matrix.html" />
           <Button
             variant="contained"
             startIcon={<AddIcon />}

@@ -32,6 +32,7 @@ export const ru = {
     settings: 'Настройки BPM',
   },
   common: {
+    howItWorks: 'Как это работает?',
     create: 'Создать',
     save: 'Сохранить',
     cancel: 'Отмена',
@@ -168,6 +169,7 @@ export const uz: Dict = {
     settings: 'BPM sozlamalari',
   },
   common: {
+    howItWorks: 'Bu qanday ishlaydi?',
     create: 'Yaratish',
     save: 'Saqlash',
     cancel: 'Bekor qilish',
@@ -304,6 +306,7 @@ export const en: Dict = {
     settings: 'BPM settings',
   },
   common: {
+    howItWorks: 'How does it work?',
     create: 'Create',
     save: 'Save',
     cancel: 'Cancel',

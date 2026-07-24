@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import HelpOutlineIcon from '@mui/icons-material/HelpOutlined'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
@@ -15,6 +13,7 @@ import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api/client'
 import type { DocumentItem, MyTask } from '../api/types'
+import { HelpButton } from '../components/HelpButton'
 import { QuickCreate } from '../components/QuickCreate'
 import { ProcessStatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth'
@@ -92,13 +91,7 @@ export function DashboardPage() {
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
           {t('dashboard.title')}
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<HelpOutlineIcon />}
-          onClick={() => window.open('/help/overview.html', '_blank', 'noopener')}
-        >
-          {t('dashboard.help')}
-        </Button>
+        <HelpButton href="/help/overview.html" />
       </Stack>
 
       <Box

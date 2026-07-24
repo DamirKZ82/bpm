@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
-import HelpOutlineIcon from '@mui/icons-material/HelpOutlined'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
@@ -19,6 +18,7 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
+import { HelpButton } from '../components/HelpButton'
 import type { DictionaryRef } from '../api/types'
 
 const FIELD_TYPES = [
@@ -151,13 +151,7 @@ export function DocumentTypesPage() {
           </Typography>
         </div>
         <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            startIcon={<HelpOutlineIcon />}
-            onClick={() => window.open('/help/document-types.html', '_blank', 'noopener')}
-          >
-            Инструкция
-          </Button>
+          <HelpButton href="/help/document-types.html" />
           <Button
             variant="contained"
             startIcon={<AddIcon />}

@@ -44,6 +44,8 @@ class Department(UUIDPKMixin, Base):
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organizations.id")
     )
+    # справочник из интеграции не удаляется: удаление в 1С → active=false
+    active: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
 
 
 class Employee(UUIDPKMixin, Base):
@@ -92,6 +94,8 @@ class Project(UUIDPKMixin, Base):
         ForeignKey("organizations.id")
     )
     status: Mapped[str | None] = mapped_column(String(50))
+    # справочник из интеграции не удаляется: удаление в 1С → active=false
+    active: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
 
 
 class User(UUIDPKMixin, Base):

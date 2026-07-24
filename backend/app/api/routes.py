@@ -58,7 +58,9 @@ async def ref_organizations(user: CurrentUser, session: SessionDep):
 
 @router.get("/refs/projects", response_model=list[ProjectRef])
 async def ref_projects(user: CurrentUser, session: SessionDep):
-    rows = await session.scalars(select(Project).order_by(Project.name))
+    rows = await session.scalars(
+        select(Project).where(Project.active.is_(True)).order_by(Project.name)
+    )
     return list(rows)
 
 

@@ -60,12 +60,14 @@ class DepartmentCreate(BaseModel):
     external_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     parent_id: uuid.UUID | None = None
     organization_id: uuid.UUID | None = None
+    active: bool = True
 
 
 class DepartmentUpdate(BaseModel):
     name: str | None = None
     parent_id: uuid.UUID | None = None
     organization_id: uuid.UUID | None = None
+    active: bool | None = None
 
 
 class DepartmentRead(BaseModel):
@@ -76,6 +78,7 @@ class DepartmentRead(BaseModel):
     external_id: uuid.UUID
     parent_id: uuid.UUID | None
     organization_id: uuid.UUID | None
+    active: bool
 
 
 class EmployeeCreate(BaseModel):
@@ -161,6 +164,7 @@ class ProjectCreate(BaseModel):
     external_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     organization_id: uuid.UUID | None = None
     status: str | None = None
+    active: bool = True
 
 
 class ProjectUpdate(BaseModel):
@@ -168,6 +172,7 @@ class ProjectUpdate(BaseModel):
     code: str | None = None
     organization_id: uuid.UUID | None = None
     status: str | None = None
+    active: bool | None = None
 
 
 class ProjectRead(BaseModel):
@@ -179,3 +184,4 @@ class ProjectRead(BaseModel):
     external_id: uuid.UUID
     organization_id: uuid.UUID | None
     status: str | None
+    active: bool

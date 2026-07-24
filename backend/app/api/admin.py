@@ -87,8 +87,11 @@ def _crud_router(
     update_schema,
     read_schema,
     roles: tuple[UserRole, ...] = (),
+    deletable: bool = True,
 ) -> APIRouter:
-    """Однотипный CRUD: list / get / post / patch / delete."""
+    """Однотипный CRUD: list / get / post / patch / delete.
+    deletable=False — справочник из интеграции: удаления нет (как в 1С),
+    вместо него — деактивация (active=false)."""
     sub = APIRouter(
         prefix=prefix,
         dependencies=[Depends(require_roles(*roles))],
@@ -127,6 +130,12 @@ def _crud_router(
 
     @sub.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
     async def delete_item(item_id: uuid.UUID, session: SessionDep):
+        if not deletable:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Справочник из интеграции не удаляется. "
+                "Отметьте запись неактивной — она будет скрыта.",
+            )
         obj = await session.get(model, item_id)
         if obj is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND)
@@ -138,16 +147,18 @@ def _crud_router(
 
 _ADMIN_ONLY: tuple[UserRole, ...] = ()  # require_roles() без ролей = только ADMIN
 
-for _model, _prefix, _c, _u, _r, _roles in [
-    (Organization, "/organizations", OrganizationCreate, OrganizationUpdate, OrganizationRead, _ADMIN_ONLY),
-    (Position, "/positions", PositionCreate, PositionUpdate, PositionRead, _ADMIN_ONLY),
-    (Department, "/departments", DepartmentCreate, DepartmentUpdate, DepartmentRead, _ADMIN_ONLY),
-    (Employee, "/employees", EmployeeCreate, EmployeeUpdate, EmployeeRead, _ADMIN_ONLY),
-    (Employment, "/employments", EmploymentCreate, EmploymentUpdate, EmploymentRead, _ADMIN_ONLY),
-    (Absence, "/absences", AbsenceCreate, AbsenceUpdate, AbsenceRead, _ADMIN_ONLY),
-    (Project, "/projects", ProjectCreate, ProjectUpdate, ProjectRead, _ADMIN_ONLY),
-    (ProjectAssignment, "/project-assignments", ProjectAssignmentCreate, ProjectAssignmentUpdate, ProjectAssignmentRead, _ADMIN_ONLY),
-    (Substitution, "/substitutions", SubstitutionCreate, SubstitutionUpdate, SubstitutionRead, _ADMIN_ONLY),
+# deletable=False — справочники-мастер из интеграции 1С/AD: удаления нет,
+# только деактивация (active=false / статус «Уволен»)
+for _model, _prefix, _c, _u, _r, _roles, _deletable in [
+    (Organization, "/organizations", OrganizationCreate, OrganizationUpdate, OrganizationRead, _ADMIN_ONLY, False),
+    (Position, "/positions", PositionCreate, PositionUpdate, PositionRead, _ADMIN_ONLY, False),
+    (Department, "/departments", DepartmentCreate, DepartmentUpdate, DepartmentRead, _ADMIN_ONLY, False),
+    (Employee, "/employees", EmployeeCreate, EmployeeUpdate, EmployeeRead, _ADMIN_ONLY, False),
+    (Employment, "/employments", EmploymentCreate, EmploymentUpdate, EmploymentRead, _ADMIN_ONLY, True),
+    (Absence, "/absences", AbsenceCreate, AbsenceUpdate, AbsenceRead, _ADMIN_ONLY, True),
+    (Project, "/projects", ProjectCreate, ProjectUpdate, ProjectRead, _ADMIN_ONLY, False),
+    (ProjectAssignment, "/project-assignments", ProjectAssignmentCreate, ProjectAssignmentUpdate, ProjectAssignmentRead, _ADMIN_ONLY, True),
+    (Substitution, "/substitutions", SubstitutionCreate, SubstitutionUpdate, SubstitutionRead, _ADMIN_ONLY, True),
 ]:
     router.include_router(
         _crud_router(
@@ -157,6 +168,7 @@ for _model, _prefix, _c, _u, _r, _roles in [
             update_schema=_u,
             read_schema=_r,
             roles=_roles,
+            deletable=_deletable,
         )
     )
 

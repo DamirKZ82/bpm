@@ -37,6 +37,8 @@ export const ENTITIES: Record<string, EntityConfig> = {
   organizations: {
     title: 'Организации',
     endpoint: '/api/admin/organizations',
+    hint: 'Справочник из интеграции 1С — не удаляется, только деактивация',
+    canDelete: false,
     fields: [
       { key: 'name', label: 'Наименование', required: true },
       { key: 'bin', label: 'БИН' },
@@ -46,7 +48,8 @@ export const ENTITIES: Record<string, EntityConfig> = {
   positions: {
     title: 'Должности',
     endpoint: '/api/admin/positions',
-    hint: 'Должность = роль в маршрутах согласования',
+    hint: 'Должность = роль в маршрутах. Справочник из интеграции — не удаляется',
+    canDelete: false,
     fields: [
       { key: 'name', label: 'Наименование', required: true },
       { key: 'active', label: 'Активна', type: 'checkbox' },
@@ -55,15 +58,20 @@ export const ENTITIES: Record<string, EntityConfig> = {
   departments: {
     title: 'Подразделения',
     endpoint: '/api/admin/departments',
+    hint: 'Справочник из интеграции 1С — не удаляется, только деактивация',
+    canDelete: false,
     fields: [
       { key: 'name', label: 'Наименование', required: true },
       { key: 'organization_id', label: 'Организация', ...ORG },
       { key: 'parent_id', label: 'Родитель', optionsUrl: '/api/admin/departments', optionLabel: 'name' },
+      { key: 'active', label: 'Активно', type: 'checkbox' },
     ],
   },
   employees: {
     title: 'Сотрудники',
     endpoint: '/api/admin/employees',
+    hint: 'Из ЗУП/AD — не удаляются никогда. Уволенный → статус «Уволен»',
+    canDelete: false,
     fields: [
       { key: 'full_name', label: 'ФИО', required: true },
       { key: 'email', label: 'Email' },
@@ -108,11 +116,14 @@ export const ENTITIES: Record<string, EntityConfig> = {
   projects: {
     title: 'Проекты',
     endpoint: '/api/admin/projects',
+    hint: 'Справочник из интеграции 1С — не удаляется, только деактивация',
+    canDelete: false,
     fields: [
       { key: 'name', label: 'Наименование', required: true },
       { key: 'code', label: 'Код' },
       { key: 'organization_id', label: 'Организация', ...ORG },
       { key: 'status', label: 'Статус' },
+      { key: 'active', label: 'Активен', type: 'checkbox' },
     ],
   },
   'project-assignments': {

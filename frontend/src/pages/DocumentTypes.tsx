@@ -19,6 +19,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ApiError, api } from '../api/client'
 import { HelpButton } from '../components/HelpButton'
+import { STICKY_ACTIONS } from '../components/dialogStyles'
 import type { DictionaryRef } from '../api/types'
 
 const FIELD_TYPES = [
@@ -425,7 +426,7 @@ export function DocumentTypesPage() {
             </>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={STICKY_ACTIONS}>
           <Button onClick={() => setEditing(null)}>Отмена</Button>
           <Button
             variant="contained"

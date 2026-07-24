@@ -23,6 +23,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { useLocalizeName } from '../i18n/localize'
+import { STICKY_ACTIONS } from '../components/dialogStyles'
 import { ApiError, api } from '../api/client'
 import type { DocumentItem, DocumentTypeRef } from '../api/types'
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
@@ -583,7 +584,7 @@ export function DocumentsPage() {
           )}
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={STICKY_ACTIONS}>
           {editing?.id && (
             <Button
               startIcon={<PrintOutlinedIcon />}

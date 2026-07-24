@@ -114,11 +114,12 @@ export function Layout() {
   const isAdmin = user?.roles.includes('ADMIN') ?? false
   const isMatrixEditor = isAdmin || (user?.roles.includes('MATRIX_EDITOR') ?? false)
 
-  // виды документов — динамические, из конструктора
+  // виды документов — динамические, из конструктора; перечитываем при
+  // навигации, чтобы меню подхватывало новые виды и переводы названий
   const [docTypes, setDocTypes] = useState<DocumentTypeRef[]>([])
   useEffect(() => {
     if (user) api<DocumentTypeRef[]>('/api/refs/document-types').then(setDocTypes)
-  }, [user])
+  }, [user, location.pathname])
 
   // счётчики для колокольчика и бейджа задач (обновление раз в 30 сек)
   const [counters, setCounters] = useState<Counters>({

@@ -35,7 +35,15 @@ from app.core.logging_conf import get_logger
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Фоновые воркеры: доставка email/Telegram и Telegram-поллер."""
+    """Стартовая инициализация + фоновые воркеры."""
+    # предопределённые системные виды документов (служебка, договор, оплата)
+    try:
+        from app.services.bootstrap import ensure_system_document_types
+
+        await ensure_system_document_types()
+    except Exception as exc:  # noqa: BLE001 — старт не должен падать из-за сида
+        get_logger().error(f'{{"event": "bootstrap_failed", "error": "{exc}"}}')
+
     workers: list[asyncio.Task] = []
     if settings.workers_enabled:
         from app.services.notify_delivery import (

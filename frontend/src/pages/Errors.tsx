@@ -190,7 +190,7 @@ export function ErrorsPage() {
               component="pre"
               sx={{
                 p: 1.5,
-                bgcolor: '#f1e9d6',
+                bgcolor: (t) => (t.palette.mode === 'dark' ? '#2a251d' : '#f6f0e2'),
                 borderRadius: 2,
                 fontSize: 12,
                 overflowX: 'auto',

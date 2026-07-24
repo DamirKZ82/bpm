@@ -323,13 +323,23 @@ async def list_documents(
     project_id: uuid.UUID | None = None,
     date_from: date_type | None = None,
     date_to: date_type | None = None,
+    search: str | None = None,
+    limit: int | None = None,
 ):
     """Свои документы; администратор видит все (ТЗ §3.6).
-    Отбор: вид, организация, проект, период, настраиваемые поля (cf_*)."""
+    Отбор: вид, организация, проект, период, настраиваемые поля (cf_*),
+    поиск по номеру и теме (search)."""
     is_admin = UserRole.ADMIN in user.roles
     stmt = select(Document).order_by(Document.created_at.desc())
     if not is_admin:
         stmt = stmt.where(Document.author_id == user.id)
+    if search:
+        pattern = f"%{search.strip()}%"
+        stmt = stmt.where(
+            Document.number.ilike(pattern) | Document.subject.ilike(pattern)
+        )
+    if limit:
+        stmt = stmt.limit(min(limit, 100))
     if type_code is not None:
         stmt = stmt.where(Document.type_code == type_code)
         stmt = await _apply_custom_filters(session, stmt, type_code, request)

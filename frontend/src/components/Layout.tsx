@@ -35,6 +35,7 @@ import type { DocumentTypeRef } from '../api/types'
 import { useAuth } from '../auth'
 import { LANGUAGES } from '../i18n'
 import { usePreferences } from '../preferences'
+import { GlobalSearch } from './GlobalSearch'
 import { Logo } from './Logo'
 import { NotificationsBell } from './NotificationsBell'
 import { TelegramLinkDialog } from './TelegramLinkDialog'
@@ -222,7 +223,7 @@ export function Layout() {
             overflowX: 'hidden',
             transition: 'width 0.2s',
             bgcolor: (theme) =>
-              theme.palette.mode === 'dark' ? '#2a251d' : '#f1e9d6',
+              theme.palette.mode === 'dark' ? '#2a251d' : '#efe7d3',
             borderRight: '1px solid',
             borderColor: 'divider',
           },
@@ -231,10 +232,6 @@ export function Layout() {
         {collapsed ? (
           <Stack sx={{ alignItems: 'center', pt: 2, pb: 1 }} spacing={0.5}>
             <Logo mark height={30} />
-            <NotificationsBell
-              unread={counters.unread_notifications}
-              onChanged={refreshCounters}
-            />
             <Tooltip title="Развернуть меню">
               <IconButton
                 size="small"
@@ -256,21 +253,15 @@ export function Layout() {
             }}
           >
             <Logo height={32} />
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-              <NotificationsBell
-                unread={counters.unread_notifications}
-                onChanged={refreshCounters}
-              />
-              <Tooltip title="Свернуть меню">
-                <IconButton
-                  size="small"
-                  onClick={toggleCollapsed}
-                  sx={{ color: 'text.secondary', p: 0.4 }}
-                >
-                  <ChevronLeftIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              </Tooltip>
-            </Stack>
+            <Tooltip title="Свернуть меню">
+              <IconButton
+                size="small"
+                onClick={toggleCollapsed}
+                sx={{ color: 'text.secondary', p: 0.4 }}
+              >
+                <ChevronLeftIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
           </Stack>
         )}
 
@@ -513,8 +504,22 @@ export function Layout() {
           </Tooltip>
         </Box>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, minWidth: 0 }}>
-        <Outlet />
+      <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* верхняя панель: поиск по документам и уведомления */}
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{ px: 3, pt: 2, alignItems: 'center', justifyContent: 'flex-end' }}
+        >
+          <GlobalSearch />
+          <NotificationsBell
+            unread={counters.unread_notifications}
+            onChanged={refreshCounters}
+          />
+        </Stack>
+        <Box component="main" sx={{ flexGrow: 1, p: 3, pt: 2, minWidth: 0 }}>
+          <Outlet />
+        </Box>
       </Box>
     </Box>
   )

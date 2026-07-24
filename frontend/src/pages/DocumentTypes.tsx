@@ -254,7 +254,13 @@ export function DocumentTypesPage() {
                 Дополнительные поля
               </Typography>
               {editing.fields.map((field, index) => (
-                <Paper key={field.code} sx={{ p: 1.5, mb: 1.5, bgcolor: '#f1e9d6' }}>
+                <Paper
+                  key={field.code}
+                  sx={{
+                    p: 1.5, mb: 1.5,
+                    bgcolor: (t) => (t.palette.mode === 'dark' ? '#2a251d' : '#f6f0e2'),
+                  }}
+                >
                   <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                     <TextField
                       label="Название поля"

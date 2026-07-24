@@ -104,6 +104,11 @@ export const ru = {
     noDocs: 'Документов пока нет',
     draft: 'Черновик',
   },
+  search: {
+    placeholder: 'Поиск документов…',
+    hint: 'Введите номер или тему',
+    noResults: 'Ничего не найдено',
+  },
   prefs: {
     language: 'Язык',
     theme: 'Тема',
@@ -212,6 +217,11 @@ export const uz: Dict = {
     noDocs: 'Hozircha hujjatlar yo‘q',
     draft: 'Qoralama',
   },
+  search: {
+    placeholder: 'Hujjatlarni qidirish…',
+    hint: 'Raqam yoki mavzuni kiriting',
+    noResults: 'Hech narsa topilmadi',
+  },
   prefs: {
     language: 'Til',
     theme: 'Mavzu',
@@ -319,6 +329,11 @@ export const en: Dict = {
     all: 'all',
     noDocs: 'No documents yet',
     draft: 'Draft',
+  },
+  search: {
+    placeholder: 'Search documents…',
+    hint: 'Enter number or subject',
+    noResults: 'Nothing found',
   },
   prefs: {
     language: 'Language',

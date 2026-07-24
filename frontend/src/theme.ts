@@ -9,14 +9,14 @@ import { ruRU } from '@mui/material/locale'
 export type ThemeMode = 'light' | 'dark'
 
 const LIGHT = {
-  page: '#ffffff',
-  paper: '#f7f2e6',       // старая газета
-  paperSoft: '#f1e9d6',   // сайдбар / вложенные блоки
-  input: '#fffdf8',
-  border: '#e7dec9',
+  page: '#f4eee0',        // фон — старая газета
+  paper: '#ffffff',       // карточки — белый лист
+  paperSoft: '#efe7d3',   // сайдбар / вложенные блоки
+  input: '#fdfaf3',
+  border: '#e2d8c2',
   text: '#3d3627',
   muted: '#8a7d64',
-  primaryLight: '#efdbb8',
+  primaryLight: '#f6e7cd',
 }
 
 const DARK = {

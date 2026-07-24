@@ -3,6 +3,7 @@ import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/DeleteOutlined'
 import EditIcon from '@mui/icons-material/EditOutlined'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import Dialog from '@mui/material/Dialog'
@@ -36,6 +37,8 @@ export interface FieldDef {
   inTable?: boolean
   inForm?: boolean
   editable?: boolean
+  /** занять всю ширину формы (длинные поля: адрес, полное наименование) */
+  full?: boolean
 }
 
 export interface EntityConfig {
@@ -253,107 +256,125 @@ export function CrudTable({ config }: { config: EntityConfig }) {
         />
       </Paper>
 
-      <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
+      <Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="md">
         <DialogTitle>{editing?.id ? 'Изменить запись' : 'Новая запись'}</DialogTitle>
         <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 2,
+              mt: 1,
+              alignItems: 'start',
+              // одна колонка на узких, две — на широких
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+            }}
+          >
             {formFields.map((field) => {
               const disabled = Boolean(editing?.id) && field.editable === false
               const value = editing?.[field.key]
               const update = (v: unknown) => setEditing({ ...editing, [field.key]: v })
+              // длинные/множественные поля — на всю ширину
+              const isFull = field.full || field.type === 'multiselect'
 
-              if (field.type === 'checkbox') {
-                return (
-                  <FormControlLabel
-                    key={field.key}
-                    control={
-                      <Checkbox
-                        checked={Boolean(value)}
-                        disabled={disabled}
-                        onChange={(e) => update(e.target.checked)}
-                      />
-                    }
-                    label={field.label}
-                  />
-                )
-              }
-              if (field.type === 'multiselect') {
-                return (
-                  <div key={field.key}>
-                    <Typography variant="body2" color="text.secondary">
-                      {field.label}{field.required ? ' *' : ''}
-                    </Typography>
-                    <FormGroup row>
-                      {(field.options ?? []).map((opt) => {
-                        const selected = Array.isArray(value) && value.includes(opt.value)
-                        return (
-                          <FormControlLabel
-                            key={opt.value}
-                            control={
-                              <Checkbox
-                                size="small"
-                                checked={selected}
-                                disabled={disabled}
-                                onChange={(e) => {
-                                  const current = Array.isArray(value) ? (value as string[]) : []
-                                  update(
-                                    e.target.checked
-                                      ? [...current, opt.value]
-                                      : current.filter((v) => v !== opt.value),
-                                  )
-                                }}
-                              />
-                            }
-                            label={opt.label}
-                          />
-                        )
-                      })}
-                    </FormGroup>
-                  </div>
-                )
-              }
-              if (field.options || field.optionsUrl) {
+              const content = (() => {
+                if (field.type === 'checkbox') {
+                  return (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={Boolean(value)}
+                          disabled={disabled}
+                          onChange={(e) => update(e.target.checked)}
+                        />
+                      }
+                      label={field.label}
+                    />
+                  )
+                }
+                if (field.type === 'multiselect') {
+                  return (
+                    <div>
+                      <Typography variant="body2" color="text.secondary">
+                        {field.label}{field.required ? ' *' : ''}
+                      </Typography>
+                      <FormGroup row>
+                        {(field.options ?? []).map((opt) => {
+                          const selected = Array.isArray(value) && value.includes(opt.value)
+                          return (
+                            <FormControlLabel
+                              key={opt.value}
+                              control={
+                                <Checkbox
+                                  size="small"
+                                  checked={selected}
+                                  disabled={disabled}
+                                  onChange={(e) => {
+                                    const current = Array.isArray(value) ? (value as string[]) : []
+                                    update(
+                                      e.target.checked
+                                        ? [...current, opt.value]
+                                        : current.filter((v) => v !== opt.value),
+                                    )
+                                  }}
+                                />
+                              }
+                              label={opt.label}
+                            />
+                          )
+                        })}
+                      </FormGroup>
+                    </div>
+                  )
+                }
+                if (field.options || field.optionsUrl) {
+                  return (
+                    <TextField
+                      select
+                      fullWidth
+                      label={field.label}
+                      required={field.required}
+                      value={value == null ? '' : String(value)}
+                      disabled={disabled}
+                      onChange={(e) => update(e.target.value || null)}
+                    >
+                      <MenuItem value="">—</MenuItem>
+                      {field.options
+                        ? field.options.map((o) => (
+                            <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+                          ))
+                        : (options[field.optionsUrl ?? ''] ?? []).map((o) => (
+                            <MenuItem key={o.id} value={o.id}>
+                              {String(o[field.optionLabel ?? 'name'])}
+                            </MenuItem>
+                          ))}
+                    </TextField>
+                  )
+                }
                 return (
                   <TextField
-                    key={field.key}
-                    select
+                    fullWidth
+                    type={field.type ?? 'text'}
                     label={field.label}
                     required={field.required}
                     value={value == null ? '' : String(value)}
                     disabled={disabled}
-                    onChange={(e) => update(e.target.value || null)}
-                  >
-                    <MenuItem value="">—</MenuItem>
-                    {field.options
-                      ? field.options.map((o) => (
-                          <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                        ))
-                      : (options[field.optionsUrl ?? ''] ?? []).map((o) => (
-                          <MenuItem key={o.id} value={o.id}>
-                            {String(o[field.optionLabel ?? 'name'])}
-                          </MenuItem>
-                        ))}
-                  </TextField>
+                    onChange={(e) => update(e.target.value)}
+                    slotProps={
+                      field.type === 'date'
+                        ? { inputLabel: { shrink: true } }
+                        : undefined
+                    }
+                  />
                 )
-              }
+              })()
+
               return (
-                <TextField
-                  key={field.key}
-                  type={field.type ?? 'text'}
-                  label={field.label}
-                  required={field.required}
-                  value={value == null ? '' : String(value)}
-                  disabled={disabled}
-                  onChange={(e) => update(e.target.value)}
-                  slotProps={
-                    field.type === 'date'
-                      ? { inputLabel: { shrink: true } }
-                      : undefined
-                  }
-                />
+                <Box key={field.key} sx={{ gridColumn: isFull ? '1 / -1' : undefined }}>
+                  {content}
+                </Box>
               )
             })}
-          </Stack>
+          </Box>
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </DialogContent>
         <DialogActions>

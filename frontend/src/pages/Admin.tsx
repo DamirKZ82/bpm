@@ -48,9 +48,9 @@ export const ENTITIES: Record<string, EntityConfig> = {
     exchangeEntity: 'ORGANIZATION',
     fields: [
       { key: 'name', label: 'Наименование', required: true },
-      { key: 'full_name', label: 'Полное наименование', inTable: false },
+      { key: 'full_name', label: 'Полное наименование', inTable: false, full: true },
       { key: 'inn', label: 'ИНН' },
-      { key: 'legal_address', label: 'Юридический адрес', inTable: false },
+      { key: 'legal_address', label: 'Юридический адрес', inTable: false, full: true },
       { key: 'phone', label: 'Телефон', inTable: false },
       { key: 'email', label: 'Эл. адрес', inTable: false },
       { key: 'active', label: 'Активна', type: 'checkbox' },
@@ -82,7 +82,7 @@ export const ENTITIES: Record<string, EntityConfig> = {
     endpoint: '/api/admin/employees',
     exchangeEntity: 'EMPLOYEE',
     fields: [
-      { key: 'full_name', label: 'ФИО', required: true },
+      { key: 'full_name', label: 'ФИО', required: true, full: true },
       { key: 'pinfl', label: 'ПИНФЛ' },
       { key: 'email', label: 'Email' },
       { key: 'status', label: 'Статус', options: EMPLOYEE_STATUSES },
@@ -143,9 +143,9 @@ export const ENTITIES: Record<string, EntityConfig> = {
     exchangeEntity: 'COUNTERPARTY',
     fields: [
       { key: 'name', label: 'Наименование', required: true },
-      { key: 'full_name', label: 'Полное наименование', inTable: false },
+      { key: 'full_name', label: 'Полное наименование', inTable: false, full: true },
       { key: 'inn', label: 'ИНН' },
-      { key: 'address', label: 'Юридический адрес', inTable: false },
+      { key: 'address', label: 'Юридический адрес', inTable: false, full: true },
       { key: 'phone', label: 'Телефон', inTable: false },
       { key: 'email', label: 'Эл. адрес', inTable: false },
       { key: 'active', label: 'Активен', type: 'checkbox' },

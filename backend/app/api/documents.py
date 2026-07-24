@@ -10,6 +10,8 @@ from sqlalchemy import Numeric, cast, or_, select, text
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     Attachment,
+    Contract,
+    Counterparty,
     DictionaryItem,
     Document,
     DocumentType,
@@ -21,6 +23,7 @@ from app.models import (
     Project,
     Task,
     User,
+    VatRate,
 )
 from app.models.enums import FieldType, ProcessStatus, RefTarget, UserRole
 from app.schemas.process import (
@@ -78,14 +81,55 @@ _REF_TABLES = {
     RefTarget.EMPLOYEE: Employee,
     RefTarget.ORGANIZATION: Organization,
     RefTarget.PROJECT: Project,
+    RefTarget.COUNTERPARTY: Counterparty,
+    RefTarget.CONTRACT: Contract,
+    RefTarget.VAT_RATE: VatRate,
 }
+
+
+async def _clean_scalar(
+    session, field_type: str, ref_target, dictionary_id, value
+):
+    """Очистка/проверка одного скалярного значения (поле или ячейка
+    таблицы). Бросает ValueError при неверном значении."""
+    if field_type in (FieldType.STRING, FieldType.TEXT):
+        return str(value)
+    if field_type in (FieldType.NUMBER, FieldType.MONEY):
+        return float(value)
+    if field_type == FieldType.BOOLEAN:
+        return bool(value)
+    if field_type == FieldType.DATE:
+        return date_type.fromisoformat(str(value)).isoformat()
+    if field_type == FieldType.REF:
+        ref_id = uuid.UUID(str(value))
+        if ref_target == RefTarget.DICTIONARY:
+            dict_id = uuid.UUID(str(dictionary_id)) if dictionary_id else None
+            found = await session.scalar(
+                select(DictionaryItem.id).where(
+                    DictionaryItem.id == ref_id,
+                    DictionaryItem.dictionary_id == dict_id,
+                )
+            )
+        else:
+            table = _REF_TABLES.get(ref_target)
+            found = (
+                await session.scalar(select(table.id).where(table.id == ref_id))
+                if table is not None
+                else None
+            )
+        if found is None:
+            raise ValueError
+        return str(ref_id)
+    return value
 
 
 async def _validate_custom_fields(
     session, doc_type: DocumentType, values: dict[str, Any]
 ) -> dict[str, Any]:
     """Проверка значений по описаниям полей вида; неизвестные ключи
-    отбрасываются, возвращается очищенный словарь."""
+    отбрасываются, возвращается очищенный словарь. Табличные части
+    (field_type=TABLE) — список строк, каждая ячейка проверяется по
+    описанию колонки."""
     fields = list(
         await session.scalars(
             select(DocumentTypeField).where(
@@ -102,40 +146,52 @@ async def _validate_custom_fields(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Заполните поле «{field.name}»",
                 )
-            clean[field.code] = None
+            clean[field.code] = [] if field.field_type == FieldType.TABLE else None
             continue
+
+        if field.field_type == FieldType.TABLE:
+            if not isinstance(value, list):
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Табличная часть «{field.name}» должна быть списком строк",
+                )
+            columns = field.columns or []
+            rows: list[dict] = []
+            for row in value:
+                if not isinstance(row, dict):
+                    continue
+                clean_row: dict[str, Any] = {}
+                for col in columns:
+                    cell = row.get(col["code"])
+                    if cell in (None, "", []):
+                        if col.get("required"):
+                            raise HTTPException(
+                                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                f"В таблице «{field.name}» заполните колонку "
+                                f"«{col['name']}»",
+                            )
+                        clean_row[col["code"]] = None
+                        continue
+                    try:
+                        clean_row[col["code"]] = await _clean_scalar(
+                            session, col["field_type"], col.get("ref_target"),
+                            col.get("dictionary_id"), cell,
+                        )
+                    except (ValueError, TypeError):
+                        raise HTTPException(
+                            status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Неверное значение в таблице «{field.name}», "
+                            f"колонка «{col['name']}»",
+                        )
+                rows.append(clean_row)
+            clean[field.code] = rows
+            continue
+
         try:
-            if field.field_type in (FieldType.STRING, FieldType.TEXT):
-                clean[field.code] = str(value)
-            elif field.field_type in (FieldType.NUMBER, FieldType.MONEY):
-                clean[field.code] = float(value)
-            elif field.field_type == FieldType.BOOLEAN:
-                clean[field.code] = bool(value)
-            elif field.field_type == FieldType.DATE:
-                clean[field.code] = date_type.fromisoformat(str(value)).isoformat()
-            elif field.field_type == FieldType.REF:
-                ref_id = uuid.UUID(str(value))
-                if field.ref_target == RefTarget.DICTIONARY:
-                    found = await session.scalar(
-                        select(DictionaryItem.id).where(
-                            DictionaryItem.id == ref_id,
-                            DictionaryItem.dictionary_id == field.dictionary_id,
-                        )
-                    )
-                else:
-                    table = _REF_TABLES.get(field.ref_target)  # type: ignore[arg-type]
-                    found = (
-                        await session.scalar(
-                            select(table.id).where(table.id == ref_id)
-                        )
-                        if table is not None
-                        else None
-                    )
-                if found is None:
-                    raise ValueError
-                clean[field.code] = str(ref_id)
-            else:
-                clean[field.code] = value
+            clean[field.code] = await _clean_scalar(
+                session, field.field_type, field.ref_target,
+                field.dictionary_id, value,
+            )
         except (ValueError, TypeError):
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,

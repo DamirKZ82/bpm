@@ -22,7 +22,7 @@ import { HelpButton } from '../components/HelpButton'
 import { STICKY_ACTIONS } from '../components/dialogStyles'
 import type { DictionaryRef } from '../api/types'
 
-const FIELD_TYPES = [
+const COLUMN_TYPES = [
   { value: 'STRING', label: 'Строка' },
   { value: 'TEXT', label: 'Текст (многострочный)' },
   { value: 'NUMBER', label: 'Число' },
@@ -32,12 +32,29 @@ const FIELD_TYPES = [
   { value: 'REF', label: 'Ссылка на справочник' },
 ]
 
+const FIELD_TYPES = [
+  ...COLUMN_TYPES,
+  { value: 'TABLE', label: 'Таблица (табличная часть)' },
+]
+
 const REF_TARGETS = [
   { value: 'EMPLOYEE', label: 'Сотрудники' },
   { value: 'ORGANIZATION', label: 'Организации' },
   { value: 'PROJECT', label: 'Проекты' },
+  { value: 'COUNTERPARTY', label: 'Контрагенты' },
+  { value: 'CONTRACT', label: 'Договоры' },
+  { value: 'VAT_RATE', label: 'Ставки НДС' },
   { value: 'DICTIONARY', label: 'Пользовательский справочник' },
 ]
+
+interface ColumnRow {
+  code: string
+  name: string
+  field_type: string
+  ref_target: string | null
+  dictionary_id: string | null
+  required: boolean
+}
 
 interface FieldRow {
   id?: string
@@ -48,7 +65,17 @@ interface FieldRow {
   ref_target: string | null
   dictionary_id: string | null
   required: boolean
+  columns?: ColumnRow[] | null
 }
+
+const newColumn = (): ColumnRow => ({
+  code: `c_${Math.random().toString(36).slice(2, 7)}`,
+  name: '',
+  field_type: 'STRING',
+  ref_target: null,
+  dictionary_id: null,
+  required: false,
+})
 
 // языки перевода названий (основное «Название» — запасной вариант)
 const I18N_LANGS: [string, string][] = [
@@ -154,6 +181,17 @@ export function DocumentTypesPage() {
     const f = editing?.fields[index]
     patchField(index, { name_i18n: { ...(f?.name_i18n || {}), [lang]: val } })
   }
+
+  // --- колонки табличной части ---
+  const fieldColumns = (index: number) => editing?.fields[index].columns ?? []
+  const patchColumn = (fi: number, ci: number, patch: Partial<ColumnRow>) =>
+    patchField(fi, {
+      columns: fieldColumns(fi).map((c, i) => (i === ci ? { ...c, ...patch } : c)),
+    })
+  const addColumn = (fi: number) =>
+    patchField(fi, { columns: [...fieldColumns(fi), newColumn()] })
+  const removeColumn = (fi: number, ci: number) =>
+    patchField(fi, { columns: fieldColumns(fi).filter((_, i) => i !== ci) })
 
   if (types === null) return null
 
@@ -410,6 +448,112 @@ export function DocumentTypesPage() {
                         </TextField>
                       )}
                     </Stack>
+                  )}
+                  {/* редактор колонок табличной части */}
+                  {field.field_type === 'TABLE' && (
+                    <div style={{ marginTop: 12 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Колонки таблицы
+                      </Typography>
+                      {(field.columns ?? []).map((col, ci) => (
+                        <Stack
+                          key={ci}
+                          direction="row"
+                          spacing={1}
+                          sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap' }}
+                        >
+                          <TextField
+                            label="Название колонки"
+                            size="small"
+                            sx={{ flexGrow: 1, minWidth: 160 }}
+                            value={col.name}
+                            onChange={(e) => patchColumn(index, ci, { name: e.target.value })}
+                          />
+                          <TextField
+                            select
+                            label="Тип"
+                            size="small"
+                            sx={{ width: 180, flexShrink: 0 }}
+                            value={col.field_type}
+                            onChange={(e) =>
+                              patchColumn(index, ci, {
+                                field_type: e.target.value,
+                                ref_target:
+                                  e.target.value === 'REF'
+                                    ? col.ref_target ?? 'COUNTERPARTY'
+                                    : null,
+                                dictionary_id: null,
+                              })
+                            }
+                          >
+                            {COLUMN_TYPES.map((t) => (
+                              <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+                            ))}
+                          </TextField>
+                          {col.field_type === 'REF' && (
+                            <TextField
+                              select
+                              label="Справочник"
+                              size="small"
+                              sx={{ width: 190, flexShrink: 0 }}
+                              value={col.ref_target ?? ''}
+                              onChange={(e) =>
+                                patchColumn(index, ci, {
+                                  ref_target: e.target.value,
+                                  dictionary_id: null,
+                                })
+                              }
+                            >
+                              {REF_TARGETS.map((t) => (
+                                <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+                              ))}
+                            </TextField>
+                          )}
+                          {col.field_type === 'REF' && col.ref_target === 'DICTIONARY' && (
+                            <TextField
+                              select
+                              label="Какой"
+                              size="small"
+                              sx={{ width: 180, flexShrink: 0 }}
+                              value={col.dictionary_id ?? ''}
+                              onChange={(e) =>
+                                patchColumn(index, ci, { dictionary_id: e.target.value || null })
+                              }
+                            >
+                              {dictionaries.map((d) => (
+                                <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
+                              ))}
+                            </TextField>
+                          )}
+                          <FormControlLabel
+                            sx={{ flexShrink: 0, mr: 0 }}
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={col.required}
+                                onChange={(e) =>
+                                  patchColumn(index, ci, { required: e.target.checked })
+                                }
+                              />
+                            }
+                            label="Обяз."
+                          />
+                          <Tooltip title="Удалить колонку">
+                            <IconButton size="small" onClick={() => removeColumn(index, ci)}>
+                              <DeleteOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      ))}
+                      <Button
+                        size="small"
+                        startIcon={<AddIcon />}
+                        sx={{ mt: 1 }}
+                        onClick={() => addColumn(index)}
+                      >
+                        Добавить колонку
+                      </Button>
+                    </div>
                   )}
                 </Paper>
               ))}

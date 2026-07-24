@@ -94,6 +94,7 @@ class TypeFieldRef(BaseModel):
     dictionary_id: uuid.UUID | None
     required: bool
     sort_order: int
+    columns: list[dict[str, Any]] | None = None  # колонки табличной части
 
 
 class DocumentTypeRef(BaseModel):

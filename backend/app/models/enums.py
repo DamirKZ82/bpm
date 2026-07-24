@@ -14,6 +14,7 @@ class FieldType(StrEnum):
     DATE = "DATE"
     BOOLEAN = "BOOLEAN"
     REF = "REF"
+    TABLE = "TABLE"  # табличная часть: несколько строк с колонками
 
 
 class RefTarget(StrEnum):
@@ -21,6 +22,9 @@ class RefTarget(StrEnum):
     ORGANIZATION = "ORGANIZATION"
     PROJECT = "PROJECT"
     DICTIONARY = "DICTIONARY"
+    COUNTERPARTY = "COUNTERPARTY"
+    CONTRACT = "CONTRACT"
+    VAT_RATE = "VAT_RATE"
 
 
 class ResolverType(StrEnum):

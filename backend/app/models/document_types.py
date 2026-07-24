@@ -55,6 +55,9 @@ class DocumentTypeField(UUIDPKMixin, Base):
     )
     required: Mapped[bool] = mapped_column(default=False)
     sort_order: Mapped[int] = mapped_column(default=0)
+    # для field_type=TABLE: описания колонок табличной части
+    # [{code, name, field_type, ref_target, dictionary_id, required}]
+    columns: Mapped[list | None] = mapped_column(JSONB)
 
 
 class Dictionary(UUIDPKMixin, Base):

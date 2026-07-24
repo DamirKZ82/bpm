@@ -562,6 +562,31 @@ def _clean_i18n(data: dict[str, str] | None) -> dict[str, str] | None:
     return cleaned or None
 
 
+class ColumnDef(BaseModel):
+    """Колонка табличной части. Как поле, но без вложенных таблиц."""
+
+    code: str = Field(min_length=1, max_length=50, pattern=r"^[a-z0-9_]+$")
+    name: str = Field(min_length=1, max_length=200)
+    field_type: str
+    ref_target: str | None = None
+    dictionary_id: uuid.UUID | None = None
+    required: bool = False
+
+    @model_validator(mode="after")
+    def check(self):
+        if self.field_type not in _FIELD_TYPES or self.field_type == FieldType.TABLE:
+            raise ValueError(f"Недопустимый тип колонки: {self.field_type}")
+        if self.field_type == FieldType.REF:
+            if self.ref_target not in _REF_TARGETS:
+                raise ValueError("Для ссылочной колонки укажите справочник")
+            if self.ref_target == RefTarget.DICTIONARY and self.dictionary_id is None:
+                raise ValueError("Укажите пользовательский справочник")
+        else:
+            self.ref_target = None
+            self.dictionary_id = None
+        return self
+
+
 class TypeFieldIn(BaseModel):
     id: uuid.UUID | None = None
     code: str = Field(min_length=1, max_length=50, pattern=r"^[a-z0-9_]+$")
@@ -571,11 +596,19 @@ class TypeFieldIn(BaseModel):
     ref_target: str | None = None
     dictionary_id: uuid.UUID | None = None
     required: bool = False
+    columns: list[ColumnDef] | None = None  # для field_type=TABLE
 
     @model_validator(mode="after")
     def check(self):
         if self.field_type not in _FIELD_TYPES:
             raise ValueError(f"Неизвестный тип поля: {self.field_type}")
+        if self.field_type == FieldType.TABLE:
+            if not self.columns:
+                raise ValueError("У табличной части укажите хотя бы одну колонку")
+            self.ref_target = None
+            self.dictionary_id = None
+            return self
+        self.columns = None
         if self.field_type == FieldType.REF:
             if self.ref_target not in _REF_TARGETS:
                 raise ValueError("Для ссылочного поля укажите справочник")
@@ -660,6 +693,10 @@ async def _apply_fields(
     }
     keep: set[uuid.UUID] = set()
     for order, field in enumerate(fields):
+        cols = (
+            [c.model_dump(mode="json") for c in field.columns]
+            if field.columns else None
+        )
         if field.id is not None and field.id in existing:
             row = existing[field.id]
             row.code = field.code
@@ -669,6 +706,7 @@ async def _apply_fields(
             row.ref_target = field.ref_target
             row.dictionary_id = field.dictionary_id
             row.required = field.required
+            row.columns = cols
             row.sort_order = order
             keep.add(row.id)
         else:
@@ -682,6 +720,7 @@ async def _apply_fields(
                     ref_target=field.ref_target,
                     dictionary_id=field.dictionary_id,
                     required=field.required,
+                    columns=cols,
                     sort_order=order,
                 )
             )

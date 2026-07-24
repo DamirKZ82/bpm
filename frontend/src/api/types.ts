@@ -46,6 +46,15 @@ export interface DocumentItem {
   process: ProcessBrief | null
 }
 
+export interface TypeColumn {
+  code: string
+  name: string
+  field_type: string
+  ref_target: string | null
+  dictionary_id: string | null
+  required: boolean
+}
+
 export interface TypeField {
   id: string
   code: string
@@ -56,6 +65,7 @@ export interface TypeField {
   dictionary_id: string | null
   required: boolean
   sort_order: number
+  columns?: TypeColumn[] | null  // для field_type=TABLE
 }
 
 export interface DocumentTypeRef {
@@ -89,6 +99,24 @@ export interface ProjectRef {
   name: string
   code: string | null
   organization_id: string | null
+}
+
+export interface CounterpartyRef {
+  id: string
+  name: string
+  inn: string | null
+}
+
+export interface ContractRef {
+  id: string
+  number: string | null
+  counterparty_id: string
+}
+
+export interface VatRateRef {
+  id: string
+  name: string
+  rate: number | null
 }
 
 export interface Attachment {

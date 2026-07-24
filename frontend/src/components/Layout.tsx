@@ -222,8 +222,9 @@ export function Layout() {
             width,
             overflowX: 'hidden',
             transition: 'width 0.2s',
+            // в светлой теме — белый лист, как карточки (фон страницы газетный)
             bgcolor: (theme) =>
-              theme.palette.mode === 'dark' ? '#2a251d' : '#efe7d3',
+              theme.palette.mode === 'dark' ? '#2a251d' : '#ffffff',
             borderRight: '1px solid',
             borderColor: 'divider',
           },

@@ -16,7 +16,16 @@ if sys.platform == "win32":
 
 from contextlib import asynccontextmanager
 
-from app.api import admin, auth, documents, errors, notifications, processes, tasks
+from app.api import (
+    admin,
+    analytics,
+    auth,
+    documents,
+    errors,
+    notifications,
+    processes,
+    tasks,
+)
 from app.api.errors import new_error_code, user_id_from_request
 from app.api.routes import router
 from app.core.config import settings
@@ -140,3 +149,4 @@ app.include_router(tasks.router)
 app.include_router(processes.router)
 app.include_router(notifications.router)
 app.include_router(errors.router)
+app.include_router(analytics.router)

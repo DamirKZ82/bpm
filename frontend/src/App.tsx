@@ -3,6 +3,7 @@ import { AuthProvider } from './auth'
 import { PreferencesProvider } from './preferences'
 import { Layout } from './components/Layout'
 import { AdminPage } from './pages/Admin'
+import { AnalyticsPage } from './pages/Analytics'
 import { DashboardPage } from './pages/Dashboard'
 import { DocumentsPage } from './pages/Documents'
 import { LoginPage } from './pages/Login'
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/process/:id" element={<ProcessPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/settings" element={<SettingsPage />} />
+            <Route path="/admin/analytics" element={<AnalyticsPage />} />
             <Route path="/admin/:entity" element={<AdminPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

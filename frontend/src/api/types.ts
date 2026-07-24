@@ -158,6 +158,34 @@ export interface RouteStageSnapshot {
   slots: RouteSlotSnapshot[]
 }
 
+export interface AnalyticsSummary {
+  processes: {
+    total: number
+    by_status: Record<string, number>
+    started_30d: number
+    completed_30d: number
+  }
+  tasks: {
+    active: number
+    active_overdue: number
+    completed_with_deadline: number
+    on_time_rate: number | null
+  }
+  cycle_time: {
+    object_type: string
+    label: string
+    avg_hours: number
+    count: number
+  }[]
+  bottlenecks: {
+    position_id: string | null
+    position_name: string
+    count: number
+    avg_hours: number
+    overdue: number
+  }[]
+}
+
 export interface Process {
   id: string
   object_type: string

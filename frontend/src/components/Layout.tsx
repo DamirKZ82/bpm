@@ -166,6 +166,7 @@ export function Layout() {
       if (isAdmin) children.push({ to: '/admin/users', label: t('nav.users') })
       if (isAdmin) children.push({ to: '/admin/exchange', label: t('nav.exchange') })
       children.push({ to: '/admin/route-rules', label: t('nav.routeMatrix') })
+      if (isAdmin) children.push({ to: '/admin/analytics', label: t('nav.analytics') })
       if (isAdmin) children.push({ to: '/admin/overdue', label: t('nav.overdue') })
       if (isAdmin) children.push({ to: '/admin/audit', label: t('nav.audit') })
       if (isAdmin) children.push({ to: '/admin/errors', label: t('nav.errors') })

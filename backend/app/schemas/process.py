@@ -81,6 +81,7 @@ class TaskRead(BaseModel):
     process_id: uuid.UUID
     stage_no: int
     order_in_stage: int
+    task_kind: str
     position_id: uuid.UUID | None
     assignee_id: uuid.UUID
     assignee_name: str | None = None

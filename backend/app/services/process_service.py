@@ -23,6 +23,7 @@ from app.models import (
 from app.models.enums import (
     ProcessStatus,
     StageType,
+    TaskKind,
     TaskResult,
     TaskStatus,
     UserStatus,
@@ -30,7 +31,24 @@ from app.models.enums import (
 from app.services.route_engine import RouteStage, build_route, route_to_snapshot
 
 OPEN_TASK_STATUSES = (TaskStatus.PENDING, TaskStatus.ACTIVE)
-APPROVED_RESULTS = (TaskResult.APPROVED, TaskResult.AUTO_APPROVED)
+# положительные исходы задания любого вида — этап считается пройденным
+APPROVED_RESULTS = (
+    TaskResult.APPROVED,
+    TaskResult.AUTO_APPROVED,
+    TaskResult.EXECUTED,
+    TaskResult.ACKNOWLEDGED,
+)
+# положительный результат по виду задания
+POSITIVE_RESULT = {
+    TaskKind.APPROVAL: TaskResult.APPROVED,
+    TaskKind.EXECUTION: TaskResult.EXECUTED,
+    TaskKind.ACKNOWLEDGEMENT: TaskResult.ACKNOWLEDGED,
+}
+AUDIT_DONE = {
+    TaskKind.APPROVAL: "TASK_APPROVED",
+    TaskKind.EXECUTION: "TASK_EXECUTED",
+    TaskKind.ACKNOWLEDGEMENT: "TASK_ACKNOWLEDGED",
+}
 
 
 def utcnow() -> datetime:
@@ -262,6 +280,7 @@ async def start_process(
                         process_id=process.id,
                         stage_no=stage.stage_no,
                         order_in_stage=slot.order_in_stage,
+                        task_kind=slot.task_kind,
                         position_id=(
                             uuid.UUID(slot.position_id) if slot.position_id else None
                         ),
@@ -304,6 +323,14 @@ async def complete_task(
         raise HTTPException(status.HTTP_409_CONFLICT, "Задача не активна")
     if user.employee_id is None or task.assignee_id != user.employee_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Задача назначена не вам")
+
+    kind = task.task_kind or TaskKind.APPROVAL
+    # ознакомление нельзя «отклонить» — только подтвердить
+    if not approve and kind == TaskKind.ACKNOWLEDGEMENT:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Задание на ознакомление можно только подтвердить",
+        )
     if not approve and not (comment and comment.strip()):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -315,7 +342,10 @@ async def complete_task(
         raise HTTPException(status.HTTP_409_CONFLICT, "Процесс уже завершён")
 
     task.status = TaskStatus.COMPLETED
-    task.result = TaskResult.APPROVED if approve else TaskResult.REJECTED
+    task.result = (
+        POSITIVE_RESULT.get(kind, TaskResult.APPROVED) if approve
+        else TaskResult.REJECTED
+    )
     task.comment = comment
     task.completed_at = utcnow()
     await _audit(
@@ -323,7 +353,7 @@ async def complete_task(
         process_id=process.id,
         task_id=task.id,
         user_id=user.id,
-        action="TASK_APPROVED" if approve else "TASK_REJECTED",
+        action=AUDIT_DONE.get(kind, "TASK_APPROVED") if approve else "TASK_REJECTED",
         payload={"comment": comment} if comment else None,
         ip=ip,
     )
@@ -331,8 +361,8 @@ async def complete_task(
     if approve:
         await _advance(session, process, ip=ip)
     else:
-        # v1: отклонение завершает процесс, повторная отправка = новый
-        # процесс с полным сбросом виз (ТЗ §6.3, упрощённый вариант)
+        # v1: отказ (отклонение согласования / невыполнение задания)
+        # завершает процесс; повторная отправка = новый процесс (ТЗ §6.3)
         await _close_open_tasks(session, process.id, TaskStatus.CANCELLED)
         process.status = ProcessStatus.REJECTED
         process.completed_at = utcnow()
@@ -340,7 +370,13 @@ async def complete_task(
             session, process_id=process.id, action="PROCESS_REJECTED", user_id=user.id
         )
         await _notify_initiator(
-            session, process, title="Документ отклонён", body=comment
+            session,
+            process,
+            title=(
+                "Задание не выполнено" if kind == TaskKind.EXECUTION
+                else "Документ отклонён"
+            ),
+            body=comment,
         )
 
     await session.commit()
@@ -480,8 +516,11 @@ async def _advance_core(
             if t.result in APPROVED_RESULTS and t.stage_no < stage_meta["stage_no"]
         }
         for task in newly_activated:
-            # Совпадение исполнителей: автосогласование, чтобы люди
-            # не кликали одно и то же дважды (ТЗ §5.2)
+            # Автозакрытие по совпадению — только для согласования (ТЗ §5.2).
+            # Исполнение и ознакомление человек подтверждает сам, даже если
+            # он же инициатор (иначе «ознакомление инициатора» бессмысленно)
+            if (task.task_kind or TaskKind.APPROVAL) != TaskKind.APPROVAL:
+                continue
             if task.assignee_id == initiator_employee_id:
                 reason = "Совпадение с инициатором"
             elif task.assignee_id in approvers:

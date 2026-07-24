@@ -8,7 +8,7 @@ import uuid
 from datetime import date as Date
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, require_roles
@@ -36,6 +36,7 @@ from app.models.enums import (
     ResolverType,
     RuleMandatory,
     StageType,
+    TaskKind,
     UserRole,
     UserStatus,
 )
@@ -283,6 +284,7 @@ router.include_router(route_rules_router)
 
 class MatrixParticipant(BaseModel):
     resolver_type: ResolverType
+    task_kind: str = "APPROVAL"  # APPROVAL / EXECUTION / ACKNOWLEDGEMENT
     position_id: uuid.UUID | None = None
     deadline_hours: int | None = None
     mandatory: RuleMandatory = RuleMandatory.REQUIRED
@@ -295,6 +297,8 @@ class MatrixParticipant(BaseModel):
         )
         if needs_position and self.position_id is None:
             raise ValueError("Для адресации по должности укажите должность")
+        if self.task_kind not in {k.value for k in TaskKind}:
+            raise ValueError(f"Неизвестный вид задания: {self.task_kind}")
         return self
 
 
@@ -384,6 +388,7 @@ async def list_matrix_routes(session: SessionDep):
         stage["participants"].append(
             MatrixParticipant(
                 resolver_type=rule.resolver_type,
+                task_kind=rule.task_kind,
                 position_id=rule.position_id,
                 deadline_hours=rule.deadline_hours,
                 mandatory=rule.mandatory,
@@ -438,6 +443,7 @@ async def save_matrix_route(payload: MatrixRoute, session: SessionDep):
                     stage_no=stage_index,
                     order_in_stage=participant_index,
                     resolver_type=participant.resolver_type,
+                    task_kind=participant.task_kind,
                     position_id=participant.position_id,
                     stage_type=stage.stage_type,
                     quorum_count=stage.quorum_count,
@@ -793,7 +799,8 @@ router.include_router(dictionaries_router)
 class UserCreate(BaseModel):
     username: str
     display_name: str | None = None
-    email: str | None = None
+    # email обязателен: без него не работают уведомления и согласование по почте
+    email: EmailStr
     roles: list[UserRole] = [UserRole.INITIATOR]
     employee_id: uuid.UUID | None = None
 
@@ -802,7 +809,7 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
     display_name: str | None = None
-    email: str | None = None
+    email: EmailStr | None = None
     roles: list[UserRole] | None = None
     employee_id: uuid.UUID | None = None
     status: UserStatus | None = None

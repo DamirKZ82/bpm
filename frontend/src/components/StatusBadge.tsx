@@ -34,6 +34,8 @@ const TASK: Record<string, [string, ChipProps['color']]> = {
   'COMPLETED:APPROVED': ['Согласовано', 'success'],
   'COMPLETED:AUTO_APPROVED': ['Автосогласовано', 'success'],
   'COMPLETED:REJECTED': ['Отклонено', 'error'],
+  'COMPLETED:EXECUTED': ['Исполнено', 'success'],
+  'COMPLETED:ACKNOWLEDGED': ['Ознакомлен', 'success'],
 }
 
 export function TaskStatusBadge({

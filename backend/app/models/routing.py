@@ -51,6 +51,10 @@ class RouteRule(UUIDPKMixin, Base):
     stage_no: Mapped[int]
     order_in_stage: Mapped[int] = mapped_column(default=1)
     resolver_type: Mapped[ResolverType]
+    # вид задания: APPROVAL / EXECUTION / ACKNOWLEDGEMENT
+    task_kind: Mapped[str] = mapped_column(
+        String(20), default="APPROVAL", server_default="APPROVAL"
+    )
     position_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("positions.id"))
     stage_type: Mapped[StageType] = mapped_column(default=StageType.SEQUENTIAL)
     quorum_count: Mapped[int | None]

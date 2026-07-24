@@ -18,7 +18,9 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { ApiError, api } from '../api/client'
-import type { MyTask } from '../api/types'
+import type { MyTask, TaskKind } from '../api/types'
+
+const kindOf = (task: MyTask): TaskKind => task.task_kind ?? 'APPROVAL'
 
 function formatDate(value: string | null): string {
   if (!value) return '—'
@@ -79,6 +81,7 @@ export function TasksPage() {
             <TableHead>
               <TableRow>
                 <TableCell>{t('tasks.document')}</TableCell>
+                <TableCell>{t('tasks.kind')}</TableCell>
                 <TableCell>{t('tasks.initiator')}</TableCell>
                 <TableCell>{t('tasks.received')}</TableCell>
                 <TableCell>{t('tasks.due')}</TableCell>
@@ -98,6 +101,7 @@ export function TasksPage() {
                       </Typography>
                     )}
                   </TableCell>
+                  <TableCell>{t(`tasks.kind${kindOf(task)}`)}</TableCell>
                   <TableCell>{task.initiator_name ?? '—'}</TableCell>
                   <TableCell>{formatDate(task.process_started_at)}</TableCell>
                   <TableCell
@@ -120,16 +124,19 @@ export function TasksPage() {
                         variant="contained"
                         onClick={() => { setAction({ task, approve: true }); setComment(''); setError('') }}
                       >
-                        {t('common.approve')}
+                        {t(`tasks.do${kindOf(task)}`)}
                       </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        onClick={() => { setAction({ task, approve: false }); setComment(''); setError('') }}
-                      >
-                        {t('common.reject')}
-                      </Button>
+                      {/* ознакомление нельзя отклонить — только подтвердить */}
+                      {kindOf(task) !== 'ACKNOWLEDGEMENT' && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          onClick={() => { setAction({ task, approve: false }); setComment(''); setError('') }}
+                        >
+                          {t(`tasks.deny${kindOf(task)}`)}
+                        </Button>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -141,7 +148,9 @@ export function TasksPage() {
 
       <Dialog open={action !== null} onClose={() => setAction(null)} fullWidth maxWidth="sm">
         <DialogTitle>
-          {action?.approve ? t('tasks.approveTitle') : t('tasks.rejectTitle')}
+          {action
+            ? `${t(action.approve ? `tasks.do${kindOf(action.task)}` : `tasks.deny${kindOf(action.task)}`)}: ${t(`tasks.kind${kindOf(action.task)}`).toLowerCase()}`
+            : ''}
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -165,7 +174,9 @@ export function TasksPage() {
             onClick={submit}
             disabled={busy || (action !== null && !action.approve && !comment.trim())}
           >
-            {action?.approve ? t('common.approve') : t('common.reject')}
+            {action
+              ? t(action.approve ? `tasks.do${kindOf(action.task)}` : `tasks.deny${kindOf(action.task)}`)
+              : ''}
           </Button>
         </DialogActions>
       </Dialog>

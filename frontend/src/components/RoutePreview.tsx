@@ -16,6 +16,12 @@ const STAGE_TYPE_LABEL: Record<string, string> = {
   QUORUM: 'кворум',
 }
 
+const KIND_LABEL: Record<string, string> = {
+  APPROVAL: 'согласование',
+  EXECUTION: 'исполнение',
+  ACKNOWLEDGEMENT: 'ознакомление',
+}
+
 interface Preview {
   ok: boolean
   error: string | null
@@ -122,6 +128,9 @@ export function RoutePreview({
                       {slot.position_name && (
                         <Typography variant="caption" color="text.secondary">
                           {slot.position_name}
+                          {slot.task_kind && slot.task_kind !== 'APPROVAL'
+                            ? ` · ${KIND_LABEL[slot.task_kind]}`
+                            : ''}
                           {slot.deadline_hours ? ` · ${slot.deadline_hours}ч` : ''}
                         </Typography>
                       )}

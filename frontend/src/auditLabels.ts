@@ -3,6 +3,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   TASK_APPROVED: 'Согласовано',
   TASK_REJECTED: 'Отклонено',
   TASK_AUTO_APPROVED: 'Автосогласовано',
+  TASK_EXECUTED: 'Исполнено',
+  TASK_ACKNOWLEDGED: 'Ознакомлен',
   PROCESS_APPROVED: 'Процесс согласован',
   PROCESS_REJECTED: 'Процесс отклонён',
   PROCESS_CANCELLED: 'Процесс отозван инициатором',

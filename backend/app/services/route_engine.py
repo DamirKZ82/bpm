@@ -44,6 +44,7 @@ class ResolvedAssignee:
 class RouteSlot:
     order_in_stage: int
     resolver_type: str
+    task_kind: str          # APPROVAL / EXECUTION / ACKNOWLEDGEMENT
     position_id: str | None
     position_name: str | None
     mandatory: str
@@ -139,6 +140,7 @@ async def build_route(
         slot = RouteSlot(
             order_in_stage=rule.order_in_stage,
             resolver_type=rule.resolver_type.value,
+            task_kind=rule.task_kind,
             position_id=str(rule.position_id) if rule.position_id else None,
             position_name=position_name,
             mandatory=rule.mandatory.value,

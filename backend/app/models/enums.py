@@ -70,10 +70,20 @@ class TaskStatus(StrEnum):
     CANCELLED = "CANCELLED"  # процесс отозван/закрыт
 
 
+class TaskKind(StrEnum):
+    """Вид задания в маршруте (как в 1С:ДО / Directum)."""
+
+    APPROVAL = "APPROVAL"                # согласование: согласовать / отклонить
+    EXECUTION = "EXECUTION"              # исполнение: исполнено / не выполнено
+    ACKNOWLEDGEMENT = "ACKNOWLEDGEMENT"  # ознакомление: ознакомлен (без отказа)
+
+
 class TaskResult(StrEnum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     AUTO_APPROVED = "AUTO_APPROVED"  # совпадение с инициатором/предыдущим этапом
+    EXECUTED = "EXECUTED"            # задание исполнено
+    ACKNOWLEDGED = "ACKNOWLEDGED"    # с документом ознакомлен
 
 
 class UserRole(StrEnum):

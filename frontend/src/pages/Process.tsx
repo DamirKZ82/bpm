@@ -67,6 +67,12 @@ const STAGE_TYPE_LABEL: Record<string, string> = {
   PARALLEL_ANY: ' · параллельно, любой',
 }
 
+const KIND_LABEL: Record<string, string> = {
+  APPROVAL: 'согласование',
+  EXECUTION: 'исполнение',
+  ACKNOWLEDGEMENT: 'ознакомление',
+}
+
 interface ProcessCommentItem {
   id: string
   user_id: string
@@ -295,6 +301,11 @@ export function ProcessPage() {
                           {slot.position_name && (
                             <Typography component="span" variant="body2" color="text.secondary">
                               {' '}· {slot.position_name}
+                            </Typography>
+                          )}
+                          {task.task_kind && task.task_kind !== 'APPROVAL' && (
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              {' '}· {KIND_LABEL[task.task_kind]}
                             </Typography>
                           )}
                           {task.substitute_for_id && (

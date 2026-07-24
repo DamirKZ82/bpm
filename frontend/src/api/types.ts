@@ -3,7 +3,9 @@ export type ProcessStatus =
   | 'PENDING_EXPORT' | 'EXPORTED' | 'CANCELLED' | 'FORCE_CLOSED'
 
 export type TaskStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'SKIPPED' | 'CANCELLED'
-export type TaskResult = 'APPROVED' | 'REJECTED' | 'AUTO_APPROVED'
+export type TaskResult =
+  | 'APPROVED' | 'REJECTED' | 'AUTO_APPROVED' | 'EXECUTED' | 'ACKNOWLEDGED'
+export type TaskKind = 'APPROVAL' | 'EXECUTION' | 'ACKNOWLEDGEMENT'
 
 export interface User {
   id: string
@@ -99,6 +101,7 @@ export interface Task {
   process_id: string
   stage_no: number
   order_in_stage: number
+  task_kind: TaskKind
   position_id: string | null
   assignee_id: string
   assignee_name: string | null
@@ -131,6 +134,7 @@ export interface AuditEntry {
 
 export interface RouteSlotSnapshot {
   order_in_stage: number
+  task_kind?: TaskKind
   resolver_type: string
   position_id: string | null
   position_name: string | null

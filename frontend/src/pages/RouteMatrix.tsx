@@ -33,6 +33,12 @@ const STAGE_TYPES = [
   { value: 'QUORUM', label: 'Кворум N из M' },
 ]
 
+const TASK_KINDS = [
+  { value: 'APPROVAL', label: 'Согласование' },
+  { value: 'EXECUTION', label: 'Исполнение' },
+  { value: 'ACKNOWLEDGEMENT', label: 'Ознакомление' },
+]
+
 const MANDATORY = [
   { value: 'REQUIRED', label: 'Обязательно' },
   { value: 'OPTIONAL', label: 'Опционально' },
@@ -44,6 +50,7 @@ const label = (options: { value: string; label: string }[], value: string) =>
 
 interface Participant {
   resolver_type: string
+  task_kind: string
   position_id: string | null
   deadline_hours: number | null
   mandatory: string
@@ -72,6 +79,7 @@ interface PositionRef {
 
 const emptyParticipant = (): Participant => ({
   resolver_type: 'POSITION_IN_ORG',
+  task_kind: 'APPROVAL',
   position_id: null,
   deadline_hours: 24,
   mandatory: 'REQUIRED',
@@ -122,7 +130,10 @@ export function RouteMatrixPage() {
     const base = p.resolver_type.startsWith('POSITION')
       ? positionName(p.position_id)
       : label(RESOLVER_TYPES, p.resolver_type)
-    return p.deadline_hours ? `${base} · ${p.deadline_hours}ч` : base
+    const kind = p.task_kind && p.task_kind !== 'APPROVAL'
+      ? ` [${label(TASK_KINDS, p.task_kind)}]`
+      : ''
+    return `${base}${kind}${p.deadline_hours ? ` · ${p.deadline_hours}ч` : ''}`
   }
 
   const save = async () => {
@@ -465,6 +476,22 @@ export function RouteMatrixPage() {
                       spacing={1.5}
                       sx={{ mb: 1, alignItems: 'center' }}
                     >
+                      <TextField
+                        select
+                        label="Вид задания"
+                        size="small"
+                        sx={{ width: 190, flexShrink: 0 }}
+                        value={participant.task_kind}
+                        onChange={(e) =>
+                          patchParticipant(stageIndex, participantIndex, {
+                            task_kind: e.target.value,
+                          })
+                        }
+                      >
+                        {TASK_KINDS.map((o) => (
+                          <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+                        ))}
+                      </TextField>
                       <TextField
                         select
                         label="Адресация"

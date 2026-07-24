@@ -39,6 +39,10 @@ class Task(UUIDPKMixin, Base):
     stage_no: Mapped[int]
     order_in_stage: Mapped[int] = mapped_column(default=1)
     position_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("positions.id"))
+    # вид задания на момент создания (из снапшота маршрута)
+    task_kind: Mapped[str] = mapped_column(
+        String(20), default="APPROVAL", server_default="APPROVAL"
+    )
     assignee_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("employees.id"))
     # Заполнено, если сработало замещение: кого замещает (ТЗ §5.1 шаг 3)
     substitute_for_id: Mapped[uuid.UUID | None] = mapped_column(

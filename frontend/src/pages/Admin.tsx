@@ -130,12 +130,14 @@ export const ENTITIES: Record<string, EntityConfig> = {
     title: 'Пользователи',
     endpoint: '/api/admin/users',
     canDelete: false,
-    hint: 'Пользователь без привязки к сотруднику не может создавать заявки',
+    hint: 'Пользователь без привязки к сотруднику не может создавать заявки. '
+      + 'Email обязателен — на него уходят уведомления и письма согласования',
     fields: [
       { key: 'ad_sam_account_name', label: 'Логин', inForm: false },
       { key: 'username', label: 'Логин', inTable: false, required: true, editable: false },
       { key: 'display_name', label: 'Отображаемое имя' },
-      { key: 'email', label: 'Email', inTable: false },
+      // без email не работают уведомления и согласование по почте
+      { key: 'email', label: 'Email', inTable: false, required: true },
       { key: 'employee_id', label: 'Сотрудник', ...EMP },
       { key: 'roles', label: 'Роли', type: 'multiselect', options: ROLES, required: true },
       {
